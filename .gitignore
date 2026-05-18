@@ -1,43 +1,33 @@
-```
-# Database files
-*.sqlite
-
-# Excel files (exports)
-exports/*.xlsx
-
-# Logs and temp files
-*.log
-*.tmp
-
-# Environment
-.env
-.env.local
-.env.*
+```gitignore
+# Compiled Python files
+*.pyc
+__pycache__/
 
 # Dependencies
-node_modules/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-venv/
 .venv/
-.env/
+venv/
+.env
+.env.local
+*.env.*
 
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
+
+# Logs
+*.log
 
 # Build artifacts
-dist/
 build/
-*.egg-info/
+dist/
+target/
+
+# Coverage reports
 .coverage
 coverage/
 htmlcov/
-.pytest_cache/
+
+# Python cache
 .mypy_cache/
+.pytest_cache/
 ```
