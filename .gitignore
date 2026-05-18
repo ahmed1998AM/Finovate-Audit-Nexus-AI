@@ -1,3 +1,36 @@
-(docs/REPOSITORY_AUDIT_REPORT.md is a documentation file, which should not be added to .gitignore)
+```
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# No changes needed - source/config files only
+# Dependencies
+.venv/
+venv/
+env/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# Build artifacts
+dist/
+build/
+target/
+```
