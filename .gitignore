@@ -1,33 +1,3 @@
-```gitignore
-# Compiled Python files
-*.pyc
-__pycache__/
+(docs/REPOSITORY_AUDIT_REPORT.md is a documentation file, which should not be added to .gitignore)
 
-# Dependencies
-.venv/
-venv/
-.env
-.env.local
-*.env.*
-
-# Editors
-.vscode/
-.idea/
-
-# Logs
-*.log
-
-# Build artifacts
-build/
-dist/
-target/
-
-# Coverage reports
-.coverage
-coverage/
-htmlcov/
-
-# Python cache
-.mypy_cache/
-.pytest_cache/
-```
+# No changes needed - source/config files only
