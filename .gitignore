@@ -1,1 +1,294 @@
-Nothing should be ignored based on the provided file changes. The added files are Python source files in an agents directory, and the modified file is a markdown documentation file. These are all legitimate source code and documentation files that should be tracked in version control.
+```
+# Dependencies
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pyc
+.pyo
+.pyd
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.ENV/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Environment variables
+.env
+.env.local
+.env.*
+!.env.example
+
+# Coverage reports
+.coverage
+coverage/
+htmlcov/
+
+# IDE specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+.nyc_output/
+coverage.xml
+
+# Distribution / packaging
+*.tar.gz
+*.whl
+*.egg
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*$pycache$*
+.Python
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Development tools
+.jupyter_recommends
+.ipython/
+.ipynb_checkpoints/
+
+# Security
+secrets/
+credentials/
+private.key
+id_rsa
+id_dsa
+
+# Configuration
+config/local.yml
+config/secrets.yml
+
+# Database
+*.db
+*.db-journal
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Compiled binary files
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Package manager cache
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Gradle
+.gradle/
+build/
+
+# Maven
+target/
+
+# Ruby
+*.gem
+*.rbc
+.bundle/
+.cover/
+.ruby-version
+.rbenv-vars
+*.sqlite3
+*.sqlitedb
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# C#
+*.sln
+*.csproj.user
+*.userosscache
+*.suo
+*.user
+*.aps
+*.pch
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+
+# C++
+*.o
+*.obj
+*.ilk
+*.pdb
+*.ipdb
+*.iobj
+*.tlog
+*.metagen
+*.bsc
+
+# Android
+*.apk
+*.aar
+*.ap_
+build/
+.externalNativeBuild
+local.properties
+
+# iOS
+*.xcodeproj/
+*.xcworkspace/
+*.framework
+*.app
+
+# Web
+*.min.js
+*.min.css
+public/build/
+
+# Documentation
+docs/_build/
+
+# Data
+*.csv
+*.json
+*.xml
+*.yaml
+*.yml
+*.toml
+*.cfg
+*.ini
+*.env
+*.example
+*.lock
+*.md
+*.txt
+*.rst
+*.py
+*.js
+*.ts
+*.jsx
+*.tsx
+*.html
+*.css
+*.scss
+*.sass
+*.less
+*.vue
+*.svelte
+*.elm
+*.coffee
+*.litcoffee
+*.cjsx
+*.cson
+*.iced
+*.eco
+*.eg
+*.eyaml
+*.hcl
+*.tf
+*.tfvars
+*.rego
+*.proto
+*.thrift
+*.avdl
+*.avpr
+*.avsc
+*.jsonld
+*.json-ld
+*.json5
+*.jsonc
+*.ndjson
+*.msgpack
+*.bson
+*.yaml
+*.yml
+*.toml
+*.cfg
+*.ini
+*.env
+*.example
+*.lock
+*.md
+*.txt
+*.rst
+*.py
+*.js
+*.ts
+*.jsx
+*.tsx
+*.html
+*.css
+*.scss
+*.sass
+*.less
+*.vue
+*.svelte
+*.elm
+*.coffee
+*.litcoffee
+*.cjsx
+*.cson
+*.iced
+*.eco
+*.eg
+*.eyaml
+*.hcl
+*.tf
+*.tfvars
+*.rego
+*.proto
+*.thrift
+*.avdl
+*.avpr
+*.avsc
+*.jsonld
+*.json-ld
+*.json5
+*.jsonc
+*.ndjson
+*.msgpack
+*.bson
+```
