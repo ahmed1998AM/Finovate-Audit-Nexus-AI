@@ -1,27 +1,29 @@
 ```
+# Database files
+*.sqlite
+
+# Excel files (exports)
+exports/*.xlsx
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+.env.*
+
 # Dependencies
+node_modules/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Virtual environments
-.venv/
+.Python
 venv/
-env/
-
-# Build artifacts
-build/
-dist/
-*.egg-info/
-
-# Logs
-*.log
-
-# Environment variables
-.env
-.env.local
-*.env.*
+.venv/
+.env/
 
 # Editors
 .vscode/
@@ -29,26 +31,13 @@ dist/
 *.swp
 *.swo
 
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Testing
+# Build artifacts
+dist/
+build/
+*.egg-info/
 .coverage
+coverage/
 htmlcov/
-.coverage.*
-.cache/
 .pytest_cache/
 .mypy_cache/
-
-# Distribution / packaging
-*.tar.gz
-*.whl
-*.zip
-
-# Python specific
-*.py[cod]
-*$py.class
-*$py.o
-*$py.d
 ```
