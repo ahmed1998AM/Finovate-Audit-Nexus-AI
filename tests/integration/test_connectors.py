@@ -19,8 +19,15 @@ class TestSAPConnector:
     @pytest.fixture
     def connector(self):
         """Create SAP connector instance."""
-        from sap_connector import SAPConnector
-        return SAPConnector()
+        from sap_connector import SAPErpConnector, SAPConnectionConfig
+        config = SAPConnectionConfig(
+            host="test.sap.com",
+            system_number="00",
+            client="100",
+            username="TEST_USER",
+            password="TEST_PASS"
+        )
+        return SAPErpConnector(config=config)
     
     def test_connection_establishment(self, connector):
         """Test SAP connection setup."""
@@ -49,8 +56,15 @@ class TestOracleConnector:
     @pytest.fixture
     def connector(self):
         """Create Oracle connector instance."""
-        from oracle_connector import OracleConnector
-        return OracleConnector()
+        from oracle_connector import OracleErpConnector, OracleConnectionConfig
+        config = OracleConnectionConfig(
+            host="test.oracle.com",
+            port=1521,
+            service_name="ORCL",
+            username="TEST_USER",
+            password="TEST_PASS"
+        )
+        return OracleErpConnector(config=config)
     
     def test_gl_extraction(self, connector):
         """Test Oracle General Ledger extraction."""
@@ -70,8 +84,14 @@ class TestMicrosoftDynamicsConnector:
     @pytest.fixture
     def connector(self):
         """Create Dynamics connector instance."""
-        from dynamics_connector import MicrosoftDynamicsConnector
-        return MicrosoftDynamicsConnector()
+        from dynamics_connector import DynamicsErpConnector, DynamicsConnectionConfig
+        config = DynamicsConnectionConfig(
+            tenant_id="test_tenant",
+            client_id="test_client",
+            client_secret="test_secret",
+            environment_url="https://test.dynamics.com"
+        )
+        return DynamicsErpConnector(config=config)
     
     def test_customer_extraction(self, connector):
         """Test customer data extraction."""
@@ -91,8 +111,15 @@ class TestNetSuiteConnector:
     @pytest.fixture
     def connector(self):
         """Create NetSuite connector instance."""
-        from netsuite_connector import NetSuiteConnector
-        return NetSuiteConnector()
+        from netsuite_connector import NetSuiteErpConnector, NetSuiteConnectionConfig
+        config = NetSuiteConnectionConfig(
+            account_id="TEST_ACCOUNT",
+            token_id="test_token",
+            token_secret="test_secret",
+            consumer_key="test_key",
+            consumer_secret="test_secret"
+        )
+        return NetSuiteErpConnector(config=config)
     
     def test_transaction_extraction(self, connector):
         """Test NetSuite transaction extraction."""
@@ -112,7 +139,15 @@ class TestQuickBooksConnector:
     def connector(self):
         """Create QuickBooks connector instance."""
         from quickbooks_connector import QuickBooksConnector
-        return QuickBooksConnector()
+        config = {
+            'client_id': 'test_client',
+            'client_secret': 'test_secret',
+            'access_token': 'test_token',
+            'refresh_token': 'test_refresh',
+            'realm_id': 'test_company',
+            'environment': 'sandbox'
+        }
+        return QuickBooksConnector(config=config)
     
     def test_financial_data_sync(self, connector):
         """Test QuickBooks financial data synchronization."""
@@ -133,7 +168,15 @@ class TestXeroConnector:
     def connector(self):
         """Create Xero connector instance."""
         from xero_connector import XeroConnector
-        return XeroConnector()
+        config = {
+            'client_id': 'test_client',
+            'client_secret': 'test_secret',
+            'access_token': 'test_token',
+            'refresh_token': 'test_refresh',
+            'tenant_id': 'test_tenant',
+            'environment': 'sandbox'
+        }
+        return XeroConnector(config=config)
     
     def test_bank_reconciliation(self, connector):
         """Test Xero bank reconciliation data."""
@@ -152,8 +195,13 @@ class TestWorkdayConnector:
     @pytest.fixture
     def connector(self):
         """Create Workday connector instance."""
-        from workday_connector import WorkdayConnector
-        return WorkdayConnector()
+        from workday_connector import WorkdayErpConnector, WorkdayConnectionConfig
+        config = WorkdayConnectionConfig(
+            tenant="test_tenant",
+            username="test_user",
+            password="test_pass"
+        )
+        return WorkdayErpConnector(config=config)
     
     def test_payroll_extraction(self, connector):
         """Test Workday payroll data extraction."""
@@ -175,8 +223,14 @@ class TestInforConnector:
     @pytest.fixture
     def connector(self):
         """Create Infor connector instance."""
-        from infor_connector import InforConnector
-        return InforConnector()
+        from infor_connector import InforErpConnector, InforConnectionConfig
+        config = InforConnectionConfig(
+            tenant_id="test_tenant",
+            client_id="test_client",
+            client_secret="test_secret",
+            api_endpoint="https://test.infor.com"
+        )
+        return InforErpConnector(config=config)
     
     def test_inventory_data(self, connector):
         """Test Infor inventory data extraction."""
@@ -198,8 +252,15 @@ class TestSageConnector:
     @pytest.fixture
     def connector(self):
         """Create Sage connector instance."""
-        from sage_connector import SageConnector
-        return SageConnector()
+        from sage_connector import SageErpConnector, SageConnectionConfig
+        config = SageConnectionConfig(
+            product="sage100",
+            host="test.sage.com",
+            port=443,
+            username="test_user",
+            password="test_pass"
+        )
+        return SageErpConnector(config=config)
     
     def test_vendor_management(self, connector):
         """Test Sage vendor data extraction."""
@@ -218,8 +279,16 @@ class TestEBSConnector:
     @pytest.fixture
     def connector(self):
         """Create EBS connector instance."""
-        from ebs_connector import EBSConnector
-        return EBSConnector()
+        from ebs_connector import EBSErpConnector, EBSConnectionConfig
+        config = EBSConnectionConfig(
+            host="test.ebs.oracle.com",
+            port=1521,
+            database="ORCL",
+            username="test_user",
+            password="test_pass",
+            responsibility="test_resp"
+        )
+        return EBSErpConnector(config=config)
     
     def test_fixed_assets(self, connector):
         """Test EBS fixed assets data."""
