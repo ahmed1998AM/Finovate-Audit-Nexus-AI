@@ -22,13 +22,28 @@ class AgentOrchestrator:
     - توزيع المهام
     """
     
-    def __init__(self):
+    def __init__(self, auto_register_agents: bool = True):
         self.orchestrator_id = "chief_orchestrator_001"
         self.agents = {}
         self.active_workflows = []
         self.status = "initialized"
         
         logger.info(f"Agent Orchestrator initialized: {self.orchestrator_id}")
+        
+        # Auto-register all agents if requested
+        if auto_register_agents:
+            self._auto_register_all_agents()
+    
+    def _auto_register_all_agents(self) -> int:
+        """تسجيل جميع الوكلاء تلقائياً"""
+        try:
+            from backend.orchestrator.agent_registry import register_agents_in_orchestrator
+            count = register_agents_in_orchestrator(self)
+            logger.info(f"Auto-registered {count} agents")
+            return count
+        except Exception as e:
+            logger.error(f"Failed to auto-register agents: {str(e)}")
+            return 0
     
     def register_agent(self, agent_name: str, agent_instance: Any) -> bool:
         """تسجيل وكيل في النظام"""
