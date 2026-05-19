@@ -10,8 +10,10 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, MagicMock
 
 # Add project paths
+sys.path.insert(0, '/workspace')
 sys.path.insert(0, '/workspace/backend')
 sys.path.insert(0, '/workspace/connectors')
+sys.path.insert(0, '/workspace/agents')
 
 
 @pytest.fixture(scope="session")

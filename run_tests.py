@@ -141,9 +141,9 @@ def generate_coverage_report():
     
     # استيراد جميع الوحدات
     try:
-        from connectors import *
-        from backend.agents import *
-        from backend.services import *
+        import connectors
+        import backend.agents
+        import backend.services
     except Exception as e:
         print(f"⚠️  Error importing modules: {e}")
         
