@@ -10,7 +10,7 @@ from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime, timedelta
 
 # Add parent directory to path
-sys.path.insert(0, '/workspace/backend')
+sys.path.insert(0, '/workspace')
 
 
 class TestFinancialAnalysisAgent:
@@ -19,13 +19,16 @@ class TestFinancialAnalysisAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.financial_analysis_agent import FinancialAnalysisAgent
-        return FinancialAnalysisAgent()
+        from agents.fs_agent.agent import FinancialStatementsAuditAgent
+        return FinancialStatementsAuditAgent()
     
     def test_initialization(self, agent):
         """Test agent initializes correctly."""
         assert agent is not None
-        assert hasattr(agent, 'analyze_financial_statements')
+        assert hasattr(agent, 'analyze_income_statement')
+        assert hasattr(agent, 'analyze_balance_sheet')
+        assert hasattr(agent, 'analyze_cash_flow')
+        assert hasattr(agent, 'calculate_financial_ratios')
     
     def test_ratio_analysis(self, agent):
         """Test financial ratio calculations."""
