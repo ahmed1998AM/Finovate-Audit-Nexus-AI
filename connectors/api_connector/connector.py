@@ -6,6 +6,45 @@ import requests
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 import json
+from dataclasses import dataclass
+
+
+@dataclass
+class APIConnectionConfig:
+    """فئة إعدادات الاتصال بـ API"""
+    base_url: str
+    auth_type: str = 'none'
+    api_key: str = ''
+    access_token: str = ''
+    username: str = ''
+    password: str = ''
+    headers: Dict[str, str] = None
+    timeout: int = 30
+    client_id: str = ''
+    client_secret: str = ''
+    refresh_token: str = ''
+    token_url: str = ''
+    
+    def __post_init__(self):
+        if self.headers is None:
+            self.headers = {}
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """تحويل الإعدادات إلى قاموس"""
+        return {
+            'base_url': self.base_url,
+            'auth_type': self.auth_type,
+            'api_key': self.api_key,
+            'access_token': self.access_token,
+            'username': self.username,
+            'password': self.password,
+            'headers': self.headers,
+            'timeout': self.timeout,
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'refresh_token': self.refresh_token,
+            'token_url': self.token_url
+        }
 
 
 class APIConnector:

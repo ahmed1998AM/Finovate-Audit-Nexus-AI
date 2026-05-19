@@ -7,6 +7,29 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 import json
 from authlib.integrations.requests_client import OAuth2Session
+from dataclasses import dataclass
+
+
+@dataclass
+class QuickBooksConnectionConfig:
+    """فئة إعدادات الاتصال بـ QuickBooks"""
+    client_id: str
+    client_secret: str
+    access_token: str = ''
+    refresh_token: str = ''
+    realm_id: str = ''
+    environment: str = 'production'
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """تحويل الإعدادات إلى قاموس"""
+        return {
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'access_token': self.access_token,
+            'refresh_token': self.refresh_token,
+            'realm_id': self.realm_id,
+            'environment': self.environment
+        }
 
 
 class QuickBooksConnector:

@@ -6,6 +6,29 @@ import requests
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 import json
+from dataclasses import dataclass
+
+
+@dataclass
+class XeroConnectionConfig:
+    """فئة إعدادات الاتصال بـ Xero"""
+    client_id: str
+    client_secret: str
+    access_token: str = ''
+    refresh_token: str = ''
+    tenant_id: str = ''
+    environment: str = 'production'
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """تحويل الإعدادات إلى قاموس"""
+        return {
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'access_token': self.access_token,
+            'refresh_token': self.refresh_token,
+            'tenant_id': self.tenant_id,
+            'environment': self.environment
+        }
 
 
 class XeroConnector:
