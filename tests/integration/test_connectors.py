@@ -192,7 +192,7 @@ class TestInforConnector:
         assert total_value == 7500
 
 
-class Test SageConnector:
+class TestSageConnector:
     """Tests for Sage Connector."""
     
     @pytest.fixture
