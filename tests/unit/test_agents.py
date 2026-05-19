@@ -66,8 +66,8 @@ class TestChiefAuditAgent:
     def test_initialization(self, agent):
         """Test agent initializes correctly."""
         assert agent is not None
-        assert hasattr(agent, 'coordinate_audit')
-        assert hasattr(agent, 'assign_tasks')
+        assert hasattr(agent, 'orchestrate_audit')
+        assert hasattr(agent, 'initialize_agents')
     
     def test_task_coordination(self, agent):
         """Test task coordination capabilities."""
@@ -107,8 +107,8 @@ class TestComplianceAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.compliance_agent.agent import ComplianceAgent
-        return ComplianceAgent()
+        from agents.compliance_agent.agent import ComplianceStandardsAgent
+        return ComplianceStandardsAgent()
     
     def test_ifrs_compliance_check(self, agent):
         """Test IFRS compliance verification."""
@@ -132,8 +132,8 @@ class TestRiskAssessmentAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.risk_agent.agent import RiskAssessmentAgent
-        return RiskAssessmentAgent()
+        from agents.risk_agent.agent import RiskScoringAgent
+        return RiskScoringAgent()
     
     def test_risk_scoring(self, agent):
         """Test risk score calculation."""
@@ -158,8 +158,8 @@ class TestForensicAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.forensic_agent.agent import ForensicAgent
-        return ForensicAgent()
+        from agents.forensic_agent.agent import ForensicAccountingAgent
+        return ForensicAccountingAgent()
     
     def test_asset_tracing(self, agent):
         """Test asset tracing capabilities."""
@@ -179,8 +179,8 @@ class TestMonitoringAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.monitoring_agent.agent import MonitoringAgent
-        return MonitoringAgent()
+        from agents.monitoring_agent.agent import ContinuousAuditAgent
+        return ContinuousAuditAgent()
     
     def test_real_time_monitoring(self, agent):
         """Test real-time monitoring capabilities."""
@@ -199,8 +199,8 @@ class TestLedgerAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.ledger_agent.agent import LedgerAgent
-        return LedgerAgent()
+        from agents.ledger_agent.agent import GeneralLedgerAuditAgent
+        return GeneralLedgerAuditAgent()
     
     def test_gl_reconciliation(self, agent):
         """Test general ledger reconciliation."""
@@ -221,8 +221,8 @@ class TestTaxAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.tax_agent.agent import TaxAgent
-        return TaxAgent()
+        from agents.tax_agent.agent import TaxComplianceAgent
+        return TaxComplianceAgent()
     
     def test_tax_calculation(self, agent):
         """Test tax calculation."""
@@ -239,8 +239,8 @@ class TestInventoryAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.inventory_agent.agent import InventoryAgent
-        return InventoryAgent()
+        from agents.inventory_agent.agent import InventoryAuditAgent
+        return InventoryAuditAgent()
     
     def test_inventory_valuation(self, agent):
         """Test inventory valuation methods."""
@@ -259,8 +259,8 @@ class TestExecutiveAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.executive_agent.agent import ExecutiveAgent
-        return ExecutiveAgent()
+        from agents.executive_agent.agent import ExecutiveIntelligenceAgent
+        return ExecutiveIntelligenceAgent()
     
     def test_executive_summary_generation(self, agent):
         """Test executive summary generation."""
@@ -279,8 +279,8 @@ class TestQAAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.qa_agent.agent import QAAgent
-        return QAAgent()
+        from agents.qa_agent.agent import AIQualityAssuranceAgent
+        return AIQualityAssuranceAgent()
     
     def test_quality_review(self, agent):
         """Test quality review process."""
@@ -299,8 +299,8 @@ class TestCopilotAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.copilot_agent.agent import CopilotAgent
-        return CopilotAgent()
+        from agents.copilot_agent.agent import AICopilotAgent
+        return AICopilotAgent()
     
     def test_assistant_capabilities(self, agent):
         """Test assistant capabilities."""
@@ -319,8 +319,8 @@ class TestGraphAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.graph_agent.agent import GraphAgent
-        return GraphAgent()
+        from agents.graph_agent.agent import FinancialGraphIntelligenceAgent
+        return FinancialGraphIntelligenceAgent()
     
     def test_relationship_mapping(self, agent):
         """Test relationship mapping."""
@@ -339,8 +339,8 @@ class TestBehaviorAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.behavior_agent.agent import BehaviorAgent
-        return BehaviorAgent()
+        from agents.behavior_agent.agent import BehavioralIntelligenceAgent
+        return BehavioralIntelligenceAgent()
     
     def test_behavioral_analysis(self, agent):
         """Test behavioral analysis."""
@@ -359,8 +359,8 @@ class TestTBAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.tb_agent.agent import TBAgent
-        return TBAgent()
+        from agents.tb_agent.agent import TrialBalanceAuditAgent
+        return TrialBalanceAuditAgent()
     
     def test_tb_analysis(self, agent):
         """Test trial balance analysis."""
@@ -382,8 +382,8 @@ class TestOCRAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.ocr_agent.agent import OCRAgent
-        return OCRAgent()
+        from agents.ocr_agent.agent import OCRDocumentIntelligenceAgent
+        return OCRDocumentIntelligenceAgent()
     
     def test_document_processing(self, agent):
         """Test document processing."""
@@ -399,8 +399,8 @@ class TestXAIAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.xai_agent.agent import XAIAgent
-        return XAIAgent()
+        from agents.xai_agent.agent import ExplainableAIAgent
+        return ExplainableAIAgent()
     
     def test_explanation_generation(self, agent):
         """Test explanation generation."""
@@ -419,8 +419,8 @@ class TestBankAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.bank_agent.agent import BankAgent
-        return BankAgent()
+        from agents.bank_agent.agent import BankAuditAgent
+        return BankAuditAgent()
     
     def test_bank_reconciliation(self, agent):
         """Test bank reconciliation."""
@@ -439,8 +439,8 @@ class TestConnectorAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.connector_agent.agent import ConnectorAgent
-        return ConnectorAgent()
+        from agents.connector_agent.agent import ERPConnectorAgent
+        return ERPConnectorAgent()
     
     def test_connector_management(self, agent):
         """Test connector management."""
@@ -455,8 +455,8 @@ class TestJournalAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.journal_agent.agent import JournalAgent
-        return JournalAgent()
+        from agents.journal_agent.agent import JournalEntryAuditAgent
+        return JournalEntryAuditAgent()
     
     def test_journal_entry_validation(self, agent):
         """Test journal entry validation."""
@@ -477,8 +477,8 @@ class TestAssetsAgent:
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.assets_agent.agent import AssetsAgent
-        return AssetsAgent()
+        from agents.assets_agent.agent import FixedAssetsAuditAgent
+        return FixedAssetsAuditAgent()
     
     def test_asset_depreciation(self, agent):
         """Test asset depreciation calculation."""
