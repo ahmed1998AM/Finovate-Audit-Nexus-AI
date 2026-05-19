@@ -9,31 +9,26 @@ __pycache__/
 .venv/
 venv/
 env/
-lib/
-lib64/
-
-# Testing
-.coverage
-htmlcov/
-.coverage.*
-.nosetests.xml
-.junit.xml
-.pytest_cache/
-.hypothesis/
-
-# Build/dist
-build/
-dist/
-*.egg
-*.egg-info/
-*.so
+.env
+.env.local
+.env.*
 
 # Logs
 *.log
 
-# Environment
-.env
-.env.local
-*.env
-.env.*
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
 ```
