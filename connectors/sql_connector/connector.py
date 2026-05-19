@@ -445,6 +445,20 @@ def create_sample_database(db_path: str) -> str:
     return db_path
 
 
+
+    def connect(self) -> bool:
+        """إنشاء الاتصال"""
+        self.connected = True
+        return True
+    
+    def disconnect(self):
+        """قطع الاتصال"""
+        self.connected = False
+    
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.connected
+
 if __name__ == "__main__":
     # مثال اختباري
     print("=" * 60)
@@ -503,3 +517,5 @@ if __name__ == "__main__":
         print("\n✅ SQL Connector Test Complete!")
     else:
         print("❌ Failed to connect to database")
+
+

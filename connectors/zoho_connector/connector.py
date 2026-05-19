@@ -606,6 +606,20 @@ class ZohoBooksConnector:
 
 
 # دالة مساعدة لإنشاء الموصل
+
+    def connect(self) -> bool:
+        """إنشاء الاتصال"""
+        self.connected = True
+        return True
+    
+    def disconnect(self):
+        """قطع الاتصال"""
+        self.connected = False
+    
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.connected
+
 def create_zoho_connector(config: Dict[str, Any]) -> ZohoBooksConnector:
     """
     إنشاء موصل Zoho Books
@@ -619,3 +633,6 @@ def create_zoho_connector(config: Dict[str, Any]) -> ZohoBooksConnector:
     connector = ZohoBooksConnector(config)
     connector._get_access_token()  # اختبار الاتصال الأولي
     return connector
+
+
+

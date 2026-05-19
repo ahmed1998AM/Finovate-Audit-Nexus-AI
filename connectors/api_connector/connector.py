@@ -529,6 +529,42 @@ class APIConnector:
         except Exception as e:
             result['message'] = str(e)
             return result
+    
+    # ==================== إدارة الاتصال ====================
+    
+    def connect(self) -> bool:
+        """
+        إنشاء الاتصال
+        
+        Returns:
+            bool: True إذا نجح الاتصال
+        """
+        try:
+            result = self.test_connection()
+            self.connected = result.get('success', False)
+            if self.connected:
+                self.last_sync = datetime.now()
+            return self.connected
+        except Exception as e:
+            print(f"خطأ في الاتصال: {str(e)}")
+            self.connected = False
+            return False
+    
+    def disconnect(self):
+        """قطع الاتصال"""
+        self.connected = False
+        self.access_token = None
+        self.token_expiry = None
+        print("تم قطع الاتصال بنجاح")
+    
+    def is_connected(self) -> bool:
+        """
+        التحقق من حالة الاتصال
+        
+        Returns:
+            bool: حالة الاتصال
+        """
+        return self.connected
 
 
 # دالة مساعدة لإنشاء الموصل

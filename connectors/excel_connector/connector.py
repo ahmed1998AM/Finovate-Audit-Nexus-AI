@@ -368,6 +368,20 @@ class ExcelConnector:
         return accounts
 
 
+
+    def connect(self) -> bool:
+        """إنشاء الاتصال"""
+        self.connected = True
+        return True
+    
+    def disconnect(self):
+        """قطع الاتصال"""
+        self.connected = False
+    
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.connected
+
 if __name__ == "__main__":
     # مثال اختباري
     print("=" * 60)
@@ -465,3 +479,6 @@ if __name__ == "__main__":
         print(f"Errors: {validation['errors']}")
     
     print("\n✅ Excel Connector Test Complete!")
+
+
+

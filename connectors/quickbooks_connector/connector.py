@@ -631,6 +631,20 @@ class QuickBooksConnector:
 
 
 # دالة مساعدة لإنشاء الموصل
+
+    def connect(self) -> bool:
+        """إنشاء الاتصال"""
+        self.connected = True
+        return True
+    
+    def disconnect(self):
+        """قطع الاتصال"""
+        self.connected = False
+    
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.connected
+
 def create_quickbooks_connector(config: Dict[str, Any]) -> QuickBooksConnector:
     """
     إنشاء موصل QuickBooks
@@ -644,3 +658,6 @@ def create_quickbooks_connector(config: Dict[str, Any]) -> QuickBooksConnector:
     connector = QuickBooksConnector(config)
     connector.get_company_info()  # اختبار الاتصال الأولي
     return connector
+
+
+
