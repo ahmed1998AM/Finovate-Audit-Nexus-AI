@@ -27,7 +27,80 @@ class SQLConnector:
         self.db_type = db_type
         self.connection = None
         self.cursor = None
+        self._connected = False
+    
+    def connect(self, **kwargs) -> bool:
+        """
+        إنشاء اتصال بقاعدة البيانات
         
+        Args:
+            **kwargs: معاملات الاتصال حسب نوع قاعدة البيانات
+            
+        Returns:
+            bool: True إذا نجح الاتصال، False otherwise
+        """
+        if self.db_type == 'sqlite':
+            db_path = kwargs.get('db_path', 'database.db')
+            return self.connect_sqlite(db_path)
+        elif self.db_type == 'postgresql':
+            return self.connect_postgresql(
+                host=kwargs.get('host', 'localhost'),
+                port=kwargs.get('port', 5432),
+                database=kwargs.get('database', ''),
+                user=kwargs.get('user', ''),
+                password=kwargs.get('password', '')
+            )
+        elif self.db_type == 'mysql':
+            return self.connect_mysql(
+                host=kwargs.get('host', 'localhost'),
+                port=kwargs.get('port', 3306),
+                database=kwargs.get('database', ''),
+                user=kwargs.get('user', ''),
+                password=kwargs.get('password', '')
+            )
+        else:
+            print(f"Error: Unsupported database type: {self.db_type}")
+            return False
+    
+    def disconnect(self) -> bool:
+        """
+        إغلاق الاتصال بقاعدة البيانات
+        
+        Returns:
+            bool: True إذا نجح الإغلاق، False otherwise
+        """
+        try:
+            self.close()
+            self._connected = False
+            return True
+        except Exception as e:
+            print(f"Error disconnecting: {e}")
+            return False
+    
+    def is_connected(self) -> bool:
+        """
+        التحقق من حالة الاتصال
+        
+        Returns:
+            bool: True إذا كان متصلًا، False otherwise
+        """
+        if self.connection is None:
+            return False
+        
+        try:
+            # اختبار بسيط للتحقق من أن الاتصال لا يزال نشطًا
+            if self.db_type == 'sqlite':
+                test_query = "SELECT 1"
+            else:
+                test_query = "SELECT 1"
+            
+            self.execute_query(test_query)
+            self._connected = True
+            return True
+        except Exception:
+            self._connected = False
+            return False
+    
     def connect_sqlite(self, db_path: str) -> bool:
         """الاتصال بقاعدة بيانات SQLite"""
         try:
@@ -37,9 +110,11 @@ class SQLConnector:
             self.connection = sqlite3.connect(db_path)
             self.cursor = self.connection.cursor()
             self.db_type = 'sqlite'
+            self._connected = True
             return True
         except Exception as e:
             print(f"Error connecting to SQLite: {e}")
+            self._connected = False
             return False
             
     def connect_postgresql(self, host: str, port: int, database: str, 
