@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.tax_agent.agent import TaxAgent
+from agents.tax_agent.agent import TaxComplianceAgent
 from backend.core.models import AuditProject, Document
 from datetime import datetime
 
