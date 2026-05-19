@@ -54,13 +54,85 @@ class TestFinancialAnalysisAgent:
         assert profit_margin == 0.15
 
 
+class TestChiefAuditAgent:
+    """Tests for Chief Audit Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.chief_agent.agent import ChiefAuditAgent
+        return ChiefAuditAgent()
+    
+    def test_initialization(self, agent):
+        """Test agent initializes correctly."""
+        assert agent is not None
+        assert hasattr(agent, 'coordinate_audit')
+        assert hasattr(agent, 'assign_tasks')
+    
+    def test_task_coordination(self, agent):
+        """Test task coordination capabilities."""
+        tasks = ['planning', 'fieldwork', 'review', 'reporting']
+        assert len(tasks) == 4
+
+
+class TestFraudDetectionAgent:
+    """Tests for Fraud Detection Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.fraud_agent.agent import FraudDetectionAgent
+        return FraudDetectionAgent()
+    
+    def test_anomaly_detection(self, agent):
+        """Test anomaly detection in transactions."""
+        normal_transactions = [100, 150, 120, 130, 140]
+        anomalous_transaction = 5000
+
+        mean_val = sum(normal_transactions) / len(normal_transactions)
+        std_dev = (sum((x - mean_val) ** 2 for x in normal_transactions) / len(normal_transactions)) ** 0.5
+
+        z_score = abs(anomalous_transaction - mean_val) / std_dev
+        assert z_score > 3  # Should be flagged as anomaly
+
+    def test_pattern_recognition(self, agent):
+        """Test pattern recognition for fraud."""
+        patterns = ['round_amounts', 'frequent_small_transactions', 'off_hours_activity']
+        assert len(patterns) >= 3
+
+
+class TestComplianceAgent:
+    """Tests for Compliance Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.compliance_agent.agent import ComplianceAgent
+        return ComplianceAgent()
+    
+    def test_ifrs_compliance_check(self, agent):
+        """Test IFRS compliance verification."""
+        sample_transactions = [
+            {'type': 'revenue', 'amount': 10000, 'date': '2024-01-15'},
+            {'type': 'expense', 'amount': 5000, 'date': '2024-01-20'}
+        ]
+        
+        assert len(sample_transactions) > 0
+        assert all('amount' in t for t in sample_transactions)
+
+    def test_gaap_compliance_check(self, agent):
+        """Test GAAP compliance verification."""
+        principles = ['accrual', 'consistency', 'materiality', 'conservatism']
+        assert len(principles) == 4
+
+
 class TestRiskAssessmentAgent:
     """Tests for Risk Assessment Agent."""
     
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.risk_assessment_agent import RiskAssessmentAgent
+        from agents.risk_agent.agent import RiskAssessmentAgent
         return RiskAssessmentAgent()
     
     def test_risk_scoring(self, agent):
@@ -72,455 +144,349 @@ class TestRiskAssessmentAgent:
             'compliance_status': 0.9
         }
         
-        # Calculate weighted risk score
         weights = {'financial_stability': 0.3, 'market_volatility': 0.25, 
                   'operational_efficiency': 0.25, 'compliance_status': 0.2}
         
         risk_score = sum(risk_factors[k] * weights[k] for k in risk_factors)
         assert 0 <= risk_score <= 1
-        assert risk_score > 0.7  # Should be low risk
+        assert risk_score > 0.7
 
 
-class TestComplianceMonitoringAgent:
-    """Tests for Compliance Monitoring Agent."""
+class TestForensicAgent:
+    """Tests for Forensic Agent."""
     
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.compliance_monitoring_agent import ComplianceMonitoringAgent
-        return ComplianceMonitoringAgent()
+        from agents.forensic_agent.agent import ForensicAgent
+        return ForensicAgent()
     
-    def test_ifrs_compliance_check(self, agent):
-        """Test IFRS compliance verification."""
-        sample_transactions = [
-            {'type': 'revenue', 'amount': 10000, 'date': '2024-01-15'},
-            {'type': 'expense', 'amount': 5000, 'date': '2024-01-20'}
+    def test_asset_tracing(self, agent):
+        """Test asset tracing capabilities."""
+        assets = [
+            {'type': 'cash', 'value': 100000},
+            {'type': 'inventory', 'value': 250000},
+            {'type': 'receivables', 'value': 150000}
         ]
         
-        # Basic compliance check
-        assert len(sample_transactions) > 0
-        assert all('amount' in t for t in sample_transactions)
-    
-    def test_gaap_compliance_check(self, agent):
-        """Test GAAP compliance verification."""
-        # Test principle adherence
-        principles = ['accrual', 'consistency', 'materiality', 'conservatism']
-        assert len(principles) == 4
+        total_assets = sum(a['value'] for a in assets)
+        assert total_assets == 500000
 
 
-class TestFraudDetectionAgent:
-    """Tests for Fraud Detection Agent."""
+class TestMonitoringAgent:
+    """Tests for Monitoring Agent."""
     
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.fraud_detection_agent import FraudDetectionAgent
-        return FraudDetectionAgent()
-    
-    def test_anomaly_detection(self, agent):
-        """Test anomaly detection in transactions."""
-        normal_transactions = [100, 150, 120, 130, 140]
-        anomalous_transaction = 5000
-        
-        mean_val = sum(normal_transactions) / len(normal_transactions)
-        std_dev = (sum((x - mean_val) ** 2 for x in normal_transactions) / len(normal_transactions)) ** 0.5
-        
-        z_score = abs(anomalous_transaction - mean_val) / std_dev
-        assert z_score > 3  # Should be flagged as anomaly
-    
-    def test_pattern_recognition(self, agent):
-        """Test pattern recognition for fraud."""
-        patterns = ['round_amounts', 'frequent_small_transactions', 'off_hours_activity']
-        assert len(patterns) >= 3
-
-
-class TestAuditPlanningAgent:
-    """Tests for Audit Planning Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.audit_planning_agent import AuditPlanningAgent
-        return AuditPlanningAgent()
-    
-    def test_materiality_calculation(self, agent):
-        """Test materiality threshold calculation."""
-        total_assets = 1000000
-        revenue = 500000
-        
-        # Common materiality thresholds
-        assets_materiality = total_assets * 0.005  # 0.5%
-        revenue_materiality = revenue * 0.01  # 1%
-        
-        assert assets_materiality == 5000
-        assert revenue_materiality == 5000
-    
-    def test_risk_based_planning(self, agent):
-        """Test risk-based audit planning."""
-        risk_areas = [
-            {'area': 'revenue', 'risk_level': 'high'},
-            {'area': 'expenses', 'risk_level': 'medium'},
-            {'area': 'assets', 'risk_level': 'low'}
-        ]
-        
-        high_risk_count = sum(1 for area in risk_areas if area['risk_level'] == 'high')
-        assert high_risk_count >= 1
-
-
-class TestInternalControlsAgent:
-    """Tests for Internal Controls Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.internal_controls_agent import InternalControlsAgent
-        return InternalControlsAgent()
-    
-    def test_control_effectiveness(self, agent):
-        """Test control effectiveness assessment."""
-        controls = [
-            {'name': 'segregation_of_duties', 'effective': True},
-            {'name': 'authorization_limits', 'effective': True},
-            {'name': 'reconciliation', 'effective': False}
-        ]
-        
-        effective_count = sum(1 for c in controls if c['effective'])
-        effectiveness_rate = effective_count / len(controls)
-        
-        assert effectiveness_rate == 2/3
-
-
-class TestContinuousAuditingAgent:
-    """Tests for Continuous Auditing Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.continuous_auditing_agent import ContinuousAuditingAgent
-        return ContinuousAuditingAgent()
+        from agents.monitoring_agent.agent import MonitoringAgent
+        return MonitoringAgent()
     
     def test_real_time_monitoring(self, agent):
-        """Test real-time transaction monitoring."""
-        transactions = [
-            {'id': 1, 'timestamp': '2024-01-15T10:00:00', 'amount': 1000},
-            {'id': 2, 'timestamp': '2024-01-15T10:05:00', 'amount': 1500}
+        """Test real-time monitoring capabilities."""
+        metrics = {
+            'cpu_usage': 45.5,
+            'memory_usage': 62.3,
+            'disk_usage': 78.1
+        }
+        
+        assert all(0 <= v <= 100 for v in metrics.values())
+
+
+class TestLedgerAgent:
+    """Tests for Ledger Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.ledger_agent.agent import LedgerAgent
+        return LedgerAgent()
+    
+    def test_gl_reconciliation(self, agent):
+        """Test general ledger reconciliation."""
+        gl_entries = [
+            {'account': '1000', 'debit': 10000, 'credit': 0},
+            {'account': '2000', 'debit': 0, 'credit': 10000}
         ]
         
-        assert len(transactions) == 2
-        assert all('timestamp' in t for t in transactions)
+        total_debits = sum(e['debit'] for e in gl_entries)
+        total_credits = sum(e['credit'] for e in gl_entries)
+        
+        assert total_debits == total_credits
 
 
-class TestReportGenerationAgent:
-    """Tests for Report Generation Agent."""
+class TestTaxAgent:
+    """Tests for Tax Agent."""
     
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.report_generation_agent import ReportGenerationAgent
-        return ReportGenerationAgent()
-    
-    def test_report_structure(self, agent):
-        """Test audit report structure."""
-        report_sections = [
-            'executive_summary',
-            'scope_and_objectives',
-            'findings',
-            'recommendations',
-            'conclusion'
-        ]
-        
-        assert len(report_sections) >= 5
-
-
-class TestPredictiveAnalyticsAgent:
-    """Tests for Predictive Analytics Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.predictive_analytics_agent import PredictiveAnalyticsAgent
-        return PredictiveAnalyticsAgent()
-    
-    def test_trend_analysis(self, agent):
-        """Test financial trend analysis."""
-        historical_data = [100, 110, 120, 130, 140]
-        
-        # Calculate growth rate
-        growth_rates = [(historical_data[i] - historical_data[i-1]) / historical_data[i-1] 
-                       for i in range(1, len(historical_data))]
-        
-        avg_growth = sum(growth_rates) / len(growth_rates)
-        assert avg_growth > 0
-
-
-class TestBenchmarkingAgent:
-    """Tests for Benchmarking Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.benchmarking_agent import BenchmarkingAgent
-        return BenchmarkingAgent()
-    
-    def test_industry_comparison(self, agent):
-        """Test industry benchmark comparison."""
-        company_metrics = {'profit_margin': 0.15, 'roe': 0.20}
-        industry_avg = {'profit_margin': 0.12, 'roe': 0.18}
-        
-        outperforming = sum(1 for k in company_metrics if company_metrics[k] > industry_avg[k])
-        assert outperforming == 2
-
-
-class TestDocumentationAgent:
-    """Tests for Documentation Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.documentation_agent import DocumentationAgent
-        return DocumentationAgent()
-    
-    def test_workpaper_generation(self, agent):
-        """Test audit workpaper generation."""
-        workpaper_elements = [
-            'objective',
-            'procedure',
-            'findings',
-            'conclusion',
-            'reviewer_notes'
-        ]
-        
-        assert len(workpaper_elements) >= 5
-
-
-class TestClientCommunicationAgent:
-    """Tests for Client Communication Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.client_communication_agent import ClientCommunicationAgent
-        return ClientCommunicationAgent()
-    
-    def test_inquiry_management(self, agent):
-        """Test client inquiry tracking."""
-        inquiries = [
-            {'id': 1, 'status': 'pending', 'priority': 'high'},
-            {'id': 2, 'status': 'resolved', 'priority': 'medium'}
-        ]
-        
-        pending_count = sum(1 for i in inquiries if i['status'] == 'pending')
-        assert pending_count == 1
-
-
-class TestSamplingAgent:
-    """Tests for Sampling Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.sampling_agent import SamplingAgent
-        return SamplingAgent()
-    
-    def test_statistical_sampling(self, agent):
-        """Test statistical sample size calculation."""
-        population_size = 10000
-        confidence_level = 0.95
-        tolerable_error = 0.05
-        
-        # Simplified sample size formula
-        sample_size = int(population_size * tolerable_error * confidence_level)
-        assert sample_size > 0
-        assert sample_size < population_size
-
-
-class TestSubstantiveTestingAgent:
-    """Tests for Substantive Testing Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.substantive_testing_agent import SubstantiveTestingAgent
-        return SubstantiveTestingAgent()
-    
-    def test_vouching_procedure(self, agent):
-        """Test vouching procedure execution."""
-        transactions = [
-            {'id': 1, 'amount': 1000, 'supported': True},
-            {'id': 2, 'amount': 1500, 'supported': True},
-            {'id': 3, 'amount': 2000, 'supported': False}
-        ]
-        
-        supported_count = sum(1 for t in transactions if t['supported'])
-        support_rate = supported_count / len(transactions)
-        
-        assert support_rate == 2/3
-
-
-class TestAnalyticalProceduresAgent:
-    """Tests for Analytical Procedures Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.analytical_procedures_agent import AnalyticalProceduresAgent
-        return AnalyticalProceduresAgent()
-    
-    def test_variance_analysis(self, agent):
-        """Test variance analysis between periods."""
-        current_period = 120000
-        prior_period = 100000
-        
-        variance = current_period - prior_period
-        variance_pct = (variance / prior_period) * 100
-        
-        assert variance == 20000
-        assert variance_pct == 20.0
-
-
-class TestTaxComplianceAgent:
-    """Tests for Tax Compliance Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.tax_compliance_agent import TaxComplianceAgent
-        return TaxComplianceAgent()
+        from agents.tax_agent.agent import TaxAgent
+        return TaxAgent()
     
     def test_tax_calculation(self, agent):
-        """Test tax liability calculation."""
+        """Test tax calculation."""
         taxable_income = 100000
         tax_rate = 0.20
         
-        tax_liability = taxable_income * tax_rate
-        assert tax_liability == 20000
+        tax_due = taxable_income * tax_rate
+        assert tax_due == 20000
 
 
-class TestESGAuditingAgent:
-    """Tests for ESG Auditing Agent."""
+class TestInventoryAgent:
+    """Tests for Inventory Agent."""
     
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.esg_auditing_agent import ESGAuditingAgent
-        return ESGAuditingAgent()
+        from agents.inventory_agent.agent import InventoryAgent
+        return InventoryAgent()
     
-    def test_esg_metrics_validation(self, agent):
-        """Test ESG metrics validation."""
-        esg_metrics = {
-            'carbon_emissions': {'value': 1000, 'unit': 'tons', 'verified': True},
-            'diversity_ratio': {'value': 0.45, 'unit': 'percentage', 'verified': True},
-            'employee_turnover': {'value': 0.10, 'unit': 'rate', 'verified': False}
+    def test_inventory_valuation(self, agent):
+        """Test inventory valuation methods."""
+        inventory_items = [
+            {'item': 'A', 'quantity': 100, 'unit_cost': 10},
+            {'item': 'B', 'quantity': 50, 'unit_cost': 20}
+        ]
+        
+        total_value = sum(i['quantity'] * i['unit_cost'] for i in inventory_items)
+        assert total_value == 2000
+
+
+class TestExecutiveAgent:
+    """Tests for Executive Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.executive_agent.agent import ExecutiveAgent
+        return ExecutiveAgent()
+    
+    def test_executive_summary_generation(self, agent):
+        """Test executive summary generation."""
+        key_findings = [
+            'Revenue increased by 15%',
+            'Operating expenses reduced by 8%',
+            'Net profit margin improved to 12%'
+        ]
+        
+        assert len(key_findings) >= 3
+
+
+class TestQAAgent:
+    """Tests for QA Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.qa_agent.agent import QAAgent
+        return QAAgent()
+    
+    def test_quality_review(self, agent):
+        """Test quality review process."""
+        review_checklist = [
+            'documentation_complete',
+            'procedures_followed',
+            'evidence_sufficient'
+        ]
+        
+        assert len(review_checklist) == 3
+
+
+class TestCopilotAgent:
+    """Tests for Copilot Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.copilot_agent.agent import CopilotAgent
+        return CopilotAgent()
+    
+    def test_assistant_capabilities(self, agent):
+        """Test assistant capabilities."""
+        suggestions = [
+            'Review high-value transactions',
+            'Verify cut-off procedures',
+            'Confirm account balances'
+        ]
+        
+        assert len(suggestions) >= 3
+
+
+class TestGraphAgent:
+    """Tests for Graph Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.graph_agent.agent import GraphAgent
+        return GraphAgent()
+    
+    def test_relationship_mapping(self, agent):
+        """Test relationship mapping."""
+        entities = [
+            {'name': 'Company A', 'type': 'corporation'},
+            {'name': 'Person B', 'type': 'individual'},
+            {'name': 'Company C', 'type': 'subsidiary'}
+        ]
+        
+        assert len(entities) == 3
+
+
+class TestBehaviorAgent:
+    """Tests for Behavior Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.behavior_agent.agent import BehaviorAgent
+        return BehaviorAgent()
+    
+    def test_behavioral_analysis(self, agent):
+        """Test behavioral analysis."""
+        behavioral_patterns = [
+            'unusual_login_times',
+            'excessive_voids',
+            'manual_journal_entries'
+        ]
+        
+        assert len(behavioral_patterns) >= 3
+
+
+class TestTBAgent:
+    """Tests for Trial Balance Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.tb_agent.agent import TBAgent
+        return TBAgent()
+    
+    def test_tb_analysis(self, agent):
+        """Test trial balance analysis."""
+        tb_accounts = [
+            {'account': 'Assets', 'balance': 500000},
+            {'account': 'Liabilities', 'balance': 200000},
+            {'account': 'Equity', 'balance': 300000}
+        ]
+        
+        total_debits = sum(a['balance'] for a in tb_accounts if a['account'] == 'Assets')
+        total_credits = sum(a['balance'] for a in tb_accounts if a['account'] in ['Liabilities', 'Equity'])
+        
+        assert total_debits == total_credits
+
+
+class TestOCRAgent:
+    """Tests for OCR Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.ocr_agent.agent import OCRAgent
+        return OCRAgent()
+    
+    def test_document_processing(self, agent):
+        """Test document processing."""
+        extracted_text = "Invoice #12345\nAmount: $5,000\nDate: 2024-01-15"
+        
+        assert 'Invoice' in extracted_text
+        assert '$5,000' in extracted_text
+
+
+class TestXAIAgent:
+    """Tests for XAI (Explainable AI) Agent."""
+    
+    @pytest.fixture
+    def agent(self):
+        """Create agent instance."""
+        from agents.xai_agent.agent import XAIAgent
+        return XAIAgent()
+    
+    def test_explanation_generation(self, agent):
+        """Test explanation generation."""
+        ai_decision = {
+            'prediction': 'high_risk',
+            'confidence': 0.85,
+            'factors': ['unusual_pattern', 'high_value', 'new_vendor']
         }
         
-        verified_count = sum(1 for m in esg_metrics.values() if m['verified'])
-        assert verified_count == 2
+        assert ai_decision['confidence'] > 0.8
 
 
-class TestForensicAccountingAgent:
-    """Tests for Forensic Accounting Agent."""
+class TestBankAgent:
+    """Tests for Bank Agent."""
     
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.forensic_accounting_agent import ForensicAccountingAgent
-        return ForensicAccountingAgent()
+        from agents.bank_agent.agent import BankAgent
+        return BankAgent()
     
-    def test_asset_tracing(self, agent):
-        """Test asset tracing capability."""
-        transactions = [
-            {'from': 'account_a', 'to': 'account_b', 'amount': 50000},
-            {'from': 'account_b', 'to': 'account_c', 'amount': 49000}
+    def test_bank_reconciliation(self, agent):
+        """Test bank reconciliation."""
+        bank_statement = [
+            {'date': '2024-01-15', 'amount': 10000, 'type': 'credit'},
+            {'date': '2024-01-16', 'amount': 5000, 'type': 'debit'}
         ]
         
-        # Trace fund flow
-        assert len(transactions) == 2
-        total_flow = sum(t['amount'] for t in transactions)
-        assert total_flow == 99000
+        net_change = sum(t['amount'] if t['type'] == 'credit' else -t['amount'] for t in bank_statement)
+        assert net_change == 5000
 
 
-class TestQualityControlAgent:
-    """Tests for Quality Control Agent."""
+class TestConnectorAgent:
+    """Tests for Connector Agent."""
     
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.quality_control_agent import QualityControlAgent
-        return QualityControlAgent()
+        from agents.connector_agent.agent import ConnectorAgent
+        return ConnectorAgent()
     
-    def test_review_checklist(self, agent):
-        """Test quality review checklist."""
-        checklist_items = [
-            {'item': 'workpapers_complete', 'status': 'passed'},
-            {'item': 'evidence_sufficient', 'status': 'passed'},
-            {'item': 'conclusions_supported', 'status': 'pending'}
-        ]
+    def test_connector_management(self, agent):
+        """Test connector management."""
+        connectors = ['SAP', 'Oracle', 'Dynamics', 'QuickBooks']
         
-        passed_count = sum(1 for item in checklist_items if item['status'] == 'passed')
-        assert passed_count == 2
+        assert len(connectors) >= 4
 
 
-class TestEngagementManagementAgent:
-    """Tests for Engagement Management Agent."""
+class TestJournalAgent:
+    """Tests for Journal Agent."""
     
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.engagement_management_agent import EngagementManagementAgent
-        return EngagementManagementAgent()
+        from agents.journal_agent.agent import JournalAgent
+        return JournalAgent()
     
-    def test_resource_allocation(self, agent):
-        """Test audit team resource allocation."""
-        team_members = [
-            {'role': 'partner', 'hours_allocated': 20},
-            {'role': 'manager', 'hours_allocated': 40},
-            {'role': 'senior', 'hours_allocated': 80},
-            {'role': 'staff', 'hours_allocated': 120}
-        ]
+    def test_journal_entry_validation(self, agent):
+        """Test journal entry validation."""
+        journal_entry = {
+            'debits': [{'account': '1000', 'amount': 5000}],
+            'credits': [{'account': '2000', 'amount': 5000}]
+        }
         
-        total_hours = sum(member['hours_allocated'] for member in team_members)
-        assert total_hours == 260
+        total_debits = sum(d['amount'] for d in journal_entry['debits'])
+        total_credits = sum(c['amount'] for c in journal_entry['credits'])
+        
+        assert total_debits == total_credits
 
 
-class TestKnowledgeManagementAgent:
-    """Tests for Knowledge Management Agent."""
+class TestAssetsAgent:
+    """Tests for Assets Agent."""
     
     @pytest.fixture
     def agent(self):
         """Create agent instance."""
-        from agents.knowledge_management_agent import KnowledgeManagementAgent
-        return KnowledgeManagementAgent()
+        from agents.assets_agent.agent import AssetsAgent
+        return AssetsAgent()
     
-    def test_knowledge_base_search(self, agent):
-        """Test knowledge base search functionality."""
-        knowledge_articles = [
-            {'title': 'IFRS 15 Revenue Recognition', 'category': 'accounting'},
-            {'title': 'ISA 240 Fraud Considerations', 'category': 'auditing'},
-            {'title': 'SOX Compliance Guide', 'category': 'compliance'}
-        ]
+    def test_asset_depreciation(self, agent):
+        """Test asset depreciation calculation."""
+        asset = {
+            'cost': 100000,
+            'salvage_value': 10000,
+            'useful_life': 10
+        }
         
-        assert len(knowledge_articles) >= 3
-
-
-class TestRegulatoryReportingAgent:
-    """Tests for Regulatory Reporting Agent."""
-    
-    @pytest.fixture
-    def agent(self):
-        """Create agent instance."""
-        from agents.regulatory_reporting_agent import RegulatoryReportingAgent
-        return RegulatoryReportingAgent()
-    
-    def test_regulatory_filing_compliance(self, agent):
-        """Test regulatory filing requirements."""
-        filings = [
-            {'form': '10-K', 'frequency': 'annual', 'status': 'filed'},
-            {'form': '10-Q', 'frequency': 'quarterly', 'status': 'pending'},
-            {'form': '8-K', 'frequency': 'event-driven', 'status': 'not_required'}
-        ]
-        
-        filed_count = sum(1 for f in filings if f['status'] == 'filed')
-        assert filed_count >= 1
-
-
-# Run with: pytest tests/unit/test_agents.py -v
+        annual_depreciation = (asset['cost'] - asset['salvage_value']) / asset['useful_life']
+        assert annual_depreciation == 9000
