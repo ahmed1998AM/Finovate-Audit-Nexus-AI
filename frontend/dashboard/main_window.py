@@ -5,16 +5,19 @@ Professional desktop interface for the AI Financial Audit Platform.
 
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                                 QTabWidget, QLabel, QFrame, QScrollArea, QGridLayout,
-                                QPushButton, QMenuBar, QMenu, QAction, QStatusBar,
+                                QPushButton, QMenuBar, QMenu, QStatusBar,
                                 QMessageBox, QFileDialog, QApplication)
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QAction, QIcon
 
-from .components.theme_manager import ThemeManager
-from .components.audit_card import AuditCard
-from .components.risk_gauge import RiskGauge
-from .components.financial_chart import FinancialChart
-from .components.agent_status_widget import AgentsDashboard
+import sys
+sys.path.insert(0, '/workspace')
+
+from frontend.components.theme_manager import ThemeManager
+from frontend.components.audit_card import AuditCard
+from frontend.components.risk_gauge import RiskGauge
+from frontend.components.financial_chart import FinancialChart
+from frontend.components.agent_status_widget import AgentsDashboard
 
 
 class MainWindow(QMainWindow):
