@@ -295,6 +295,77 @@ class ExcelConnector:
                 )
                 
         return validation_results
+    
+    def get_journal_entries(self, file_path: str, date_from: Optional[str] = None, date_to: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        استخراج قيود اليومية من ملف Excel
+        
+        Args:
+            file_path: مسار ملف Excel
+            date_from: تاريخ البدء (اختياري)
+            date_to: تاريخ الانتهاء (اختياري)
+            
+        Returns:
+            قائمة بقيود اليومية
+        """
+        df = self.read_journal_entries(file_path)
+        
+        # تصفية حسب التاريخ إذا تم تحديده
+        if date_from and 'date' in df.columns:
+            df = df[df['date'] >= date_from]
+        if date_to and 'date' in df.columns:
+            df = df[df['date'] <= date_to]
+        
+        # تحويل إلى قائمة من القواميس
+        entries = []
+        for _, row in df.iterrows():
+            entry = {
+                'id': row.get('id', row.get('reference', '')),
+                'date': row.get('date', ''),
+                'account_code': row.get('account_code', row.get('account', '')),
+                'account_name': row.get('account_name', ''),
+                'description': row.get('description', row.get('narration', '')),
+                'debit': float(row.get('debit', 0)),
+                'credit': float(row.get('credit', 0)),
+                'balance': float(row.get('balance', 0)),
+                'currency': row.get('currency', 'USD'),
+                'reference': row.get('reference', ''),
+                'cost_center': row.get('cost_center', ''),
+                'project': row.get('project', '')
+            }
+            entries.append(entry)
+        
+        return entries
+    
+    def get_trial_balance(self, file_path: str) -> List[Dict[str, Any]]:
+        """
+        استخراج ميزان المراجعة من ملف Excel
+        
+        Args:
+            file_path: مسار ملف Excel
+            
+        Returns:
+            قائمة بحسابات ميزان المراجعة
+        """
+        df = self.read_trial_balance(file_path)
+        
+        accounts = []
+        for _, row in df.iterrows():
+            account = {
+                'account_code': row.get('account_code', row.get('code', '')),
+                'account_name': row.get('account_name', row.get('name', '')),
+                'opening_debit': float(row.get('opening_debit', 0)),
+                'opening_credit': float(row.get('opening_credit', 0)),
+                'period_debit': float(row.get('period_debit', 0)),
+                'period_credit': float(row.get('period_credit', 0)),
+                'closing_debit': float(row.get('closing_debit', 0)),
+                'closing_credit': float(row.get('closing_credit', 0)),
+                'account_type': row.get('account_type', ''),
+                'parent_account': row.get('parent_account', '')
+            }
+            accounts.append(account)
+        
+        return accounts
 
 
 if __name__ == "__main__":

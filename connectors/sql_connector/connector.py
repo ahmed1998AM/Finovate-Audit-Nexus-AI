@@ -250,6 +250,88 @@ class SQLConnector:
             self.cursor.close()
         if self.connection:
             self.connection.close()
+    
+    def get_journal_entries(self, table_name: str = 'journal_entries',
+                            date_from: Optional[str] = None,
+                            date_to: Optional[str] = None,
+                            account_code: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        استخراج قيود اليومية من قاعدة البيانات
+        
+        Args:
+            table_name: اسم الجدول
+            date_from: تاريخ البدء (اختياري)
+            date_to: تاريخ الانتهاء (اختياري)
+            account_code: كود الحساب (اختياري)
+            
+        Returns:
+            قائمة بقيود اليومية
+        """
+        conditions = []
+        
+        if date_from:
+            conditions.append(f"date >= '{date_from}'")
+        if date_to:
+            conditions.append(f"date <= '{date_to}'")
+        if account_code:
+            conditions.append(f"account_code = '{account_code}'")
+        
+        where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
+        query = f"SELECT * FROM {table_name}{where_clause} ORDER BY date"
+        
+        df = self.execute_query(query)
+        
+        entries = []
+        for _, row in df.iterrows():
+            entry = {
+                'id': row.get('id', row.get('reference', '')),
+                'date': row.get('date', row.get('transaction_date', '')),
+                'account_code': row.get('account_code', ''),
+                'account_name': row.get('account_name', ''),
+                'description': row.get('description', row.get('narration', '')),
+                'debit': float(row.get('debit', 0)),
+                'credit': float(row.get('credit', 0)),
+                'balance': float(row.get('balance', 0)),
+                'currency': row.get('currency', 'USD'),
+                'reference': row.get('reference', ''),
+                'cost_center': row.get('cost_center', ''),
+                'project': row.get('project', '')
+            }
+            entries.append(entry)
+        
+        return entries
+    
+    def get_trial_balance(self, table_name: str = 'trial_balance',
+                          period: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        استخراج ميزان المراجعة من قاعدة البيانات
+        
+        Args:
+            table_name: اسم الجدول
+            period: الفترة (اختياري)
+            
+        Returns:
+            قائمة بحسابات ميزان المراجعة
+        """
+        df = self.read_trial_balance(table_name, period)
+        
+        accounts = []
+        for _, row in df.iterrows():
+            account = {
+                'account_code': row.get('account_code', ''),
+                'account_name': row.get('account_name', ''),
+                'opening_debit': float(row.get('opening_debit', 0)),
+                'opening_credit': float(row.get('opening_credit', 0)),
+                'period_debit': float(row.get('period_debit', 0)),
+                'period_credit': float(row.get('period_credit', 0)),
+                'closing_debit': float(row.get('closing_debit', 0)),
+                'closing_credit': float(row.get('closing_credit', 0)),
+                'account_type': row.get('account_type', ''),
+                'parent_account': row.get('parent_account', '')
+            }
+            accounts.append(account)
+        
+        return accounts
             
     def __enter__(self):
         return self
