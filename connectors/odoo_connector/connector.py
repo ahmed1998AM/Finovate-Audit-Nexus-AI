@@ -7,6 +7,29 @@ import xmlrpc.client
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 import json
+from dataclasses import dataclass
+
+
+@dataclass
+class OdooConnectionConfig:
+    """فئة إعدادات الاتصال بـ Odoo"""
+    url: str
+    db: str = 'odoo'
+    username: str = 'admin'
+    password: str = ''
+    api_key: str = ''
+    version: str = '16'
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """تحويل الإعدادات إلى قاموس"""
+        return {
+            'url': self.url,
+            'db': self.db,
+            'username': self.username,
+            'password': self.password,
+            'api_key': self.api_key,
+            'version': self.version
+        }
 
 
 class OdooConnector:

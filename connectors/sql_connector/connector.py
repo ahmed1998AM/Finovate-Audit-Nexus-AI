@@ -8,6 +8,33 @@ import sqlite3
 from typing import Dict, List, Any, Optional, Generator
 from datetime import datetime
 import os
+from dataclasses import dataclass
+
+
+@dataclass
+class SQLConnectionConfig:
+    """فئة إعدادات الاتصال بقواعد البيانات SQL"""
+    connection_string: str = ''
+    db_type: str = 'sqlite'
+    host: str = 'localhost'
+    port: int = 5432
+    database: str = ''
+    user: str = ''
+    password: str = ''
+    db_path: str = ''
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """تحويل الإعدادات إلى قاموس"""
+        return {
+            'connection_string': self.connection_string,
+            'db_type': self.db_type,
+            'host': self.host,
+            'port': self.port,
+            'database': self.database,
+            'user': self.user,
+            'password': self.password,
+            'db_path': self.db_path
+        }
 
 
 class SQLConnector:

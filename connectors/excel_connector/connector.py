@@ -11,6 +11,29 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from typing import Dict, List, Any, Optional, Union
 from datetime import datetime
 import os
+from dataclasses import dataclass
+
+
+@dataclass
+class ExcelConnectionConfig:
+    """فئة إعدادات الاتصال بملفات Excel"""
+    file_path: str = ''
+    sheet_names: List[str] = None
+    read_only: bool = False
+    data_only: bool = True
+    
+    def __post_init__(self):
+        if self.sheet_names is None:
+            self.sheet_names = []
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """تحويل الإعدادات إلى قاموس"""
+        return {
+            'file_path': self.file_path,
+            'sheet_names': self.sheet_names,
+            'read_only': self.read_only,
+            'data_only': self.data_only
+        }
 
 
 class ExcelConnector:
