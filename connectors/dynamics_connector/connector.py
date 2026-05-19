@@ -297,6 +297,10 @@ class DynamicsErpConnector:
             "environment": self.config.environment_url,
             "read_only_mode": True
         }
+    
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.is_connected
 
 
 def create_dynamics_connector(config: Dict[str, Any]) -> DynamicsErpConnector:

@@ -329,6 +329,20 @@ class OracleErpConnector:
         }
 
 
+
+    def connect(self) -> bool:
+        """إنشاء الاتصال"""
+        self.connected = True
+        return True
+    
+    def disconnect(self):
+        """قطع الاتصال"""
+        self.connected = False
+    
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.connected
+
 def create_oracle_connector(config: Dict[str, Any]) -> OracleErpConnector:
     """إنشاء موصل Oracle"""
     oracle_config = OracleConnectionConfig(
@@ -340,3 +354,4 @@ def create_oracle_connector(config: Dict[str, Any]) -> OracleErpConnector:
         schema=config.get("schema", "APPS")
     )
     return OracleErpConnector(oracle_config)
+

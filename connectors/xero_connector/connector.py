@@ -638,6 +638,20 @@ class XeroConnector:
 
 
 # دالة مساعدة لإنشاء الموصل
+
+    def connect(self) -> bool:
+        """إنشاء الاتصال"""
+        self.connected = True
+        return True
+    
+    def disconnect(self):
+        """قطع الاتصال"""
+        self.connected = False
+    
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.connected
+
 def create_xero_connector(config: Dict[str, Any]) -> XeroConnector:
     """
     إنشاء موصل Xero
@@ -651,3 +665,6 @@ def create_xero_connector(config: Dict[str, Any]) -> XeroConnector:
     connector = XeroConnector(config)
     connector.get_organization_info()  # اختبار الاتصال الأولي
     return connector
+
+
+

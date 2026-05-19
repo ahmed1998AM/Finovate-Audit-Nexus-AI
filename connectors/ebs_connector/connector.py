@@ -315,3 +315,20 @@ class EBSErpConnector:
             self.last_sync = datetime.now()
         
         return results
+
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.is_connected
+
+
+def create_ebs_connector(config: Dict[str, Any]) -> EBSErpConnector:
+    """إنشاء موصل EBS"""
+    ebs_config = EBSConnectionConfig(
+        host=config.get("host", ""),
+        port=config.get("port", 1521),
+        service_name=config.get("service_name", ""),
+        username=config.get("username", ""),
+        password=config.get("password", ""),
+        schema=config.get("schema", "APPS")
+    )
+    return EBSErpConnector(ebs_config)

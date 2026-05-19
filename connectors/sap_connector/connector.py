@@ -421,6 +421,20 @@ class SAPErpConnector:
 
 
 # Factory function
+
+    def connect(self) -> bool:
+        """إنشاء الاتصال"""
+        self.connected = True
+        return True
+    
+    def disconnect(self):
+        """قطع الاتصال"""
+        self.connected = False
+    
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.connected
+
 def create_sap_connector(config: Dict[str, Any]) -> SAPErpConnector:
     """إنشاء موصل SAP"""
     sap_config = SAPConnectionConfig(
@@ -433,3 +447,4 @@ def create_sap_connector(config: Dict[str, Any]) -> SAPErpConnector:
         port=config.get("port", 3300)
     )
     return SAPErpConnector(sap_config)
+

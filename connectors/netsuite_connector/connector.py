@@ -325,3 +325,7 @@ class NetSuiteErpConnector:
             self.last_sync = datetime.now()
         
         return results
+
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.is_connected

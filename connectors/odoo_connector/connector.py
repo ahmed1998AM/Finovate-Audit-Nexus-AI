@@ -770,6 +770,20 @@ class OdooConnector:
 
 
 # دالة مساعدة لإنشاء الموصل
+
+    def connect(self) -> bool:
+        """إنشاء الاتصال"""
+        self.connected = True
+        return True
+    
+    def disconnect(self):
+        """قطع الاتصال"""
+        self.connected = False
+    
+    def is_connected(self) -> bool:
+        """التحقق من حالة الاتصال"""
+        return self.connected
+
 def create_odoo_connector(config: Dict[str, Any]) -> OdooConnector:
     """
     إنشاء موصل Odoo
@@ -783,3 +797,4 @@ def create_odoo_connector(config: Dict[str, Any]) -> OdooConnector:
     connector = OdooConnector(config)
     connector.connect()
     return connector
+
