@@ -119,6 +119,10 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
+# Alias for backward compatibility
+Config = Settings
+
+
 def get_settings() -> Settings:
     """Get global settings instance"""
     return settings
