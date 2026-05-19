@@ -1,64 +1,38 @@
-```
-# Python
-__pycache__/
+```gitignore
+# Python compiled files
 *.pyc
-*.pyo
-*.pyd
+__pycache__/
 
-# Database
-finovate_audit.db
+# Excel export files
+exports/*.xlsx
 
-# Logs
+# Logs and temporary files
 *.log
+*.tmp
 
-# Environment
+# Environment files
 .env
 .env.local
 *.env.*
 
-# Dependencies
-.venv/
-venv/
-node_modules/
-
-# Build artifacts
-dist/
-build/
-target/
-
-# Editors
+# Editor/IDE files
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# OS
+# System files
 .DS_Store
 Thumbs.db
 
-# Testing
-.coverage
+# Coverage reports
+coverage/
 htmlcov/
-.coverage.*
-.cache
-.pytest_cache/
+.coverage
+
+# MyPy cache
 .mypy_cache/
 
-# Compression
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
+# Pytest cache
+.pytest_cache/
 ```
