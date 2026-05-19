@@ -13,7 +13,7 @@ sys.path.insert(0, '/workspace')
 def run_api_server():
     """Run the FastAPI backend server."""
     import uvicorn
-    from backend.api.main import app
+    from backend.api.app import app
     
     uvicorn.run(
         app,
