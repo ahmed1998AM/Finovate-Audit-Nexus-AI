@@ -7,6 +7,15 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 
+# Editors
+.vscode/
+.idea/
+
+# Coverage reports
+.coverage
+coverage/
+htmlcov/
+
 # Build artifacts
 dist/
 build/
