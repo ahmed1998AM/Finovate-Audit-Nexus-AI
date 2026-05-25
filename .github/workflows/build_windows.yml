@@ -31,12 +31,7 @@ env:
 jobs:
   build-windows:
     runs-on: windows-latest
-    timeout-minutes: 45
-
-    strategy:
-      matrix:
-        python-version: ['3.10', '3.11', '3.12']
-      fail-fast: false
+    timeout-minutes: 60
 
     steps:
     - name: Checkout repository
@@ -44,12 +39,12 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Setup Python ${{ matrix.python-version }}
+    - name: Setup Python 3.11
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.11'
         cache: 'pip'
-        cache-dependency-path: 'requirements*.txt'
+        cache-dependency-path: 'requirements-windows.txt'
 
     - name: Upgrade pip and install build tools
       run: |
@@ -58,18 +53,21 @@ jobs:
         pip install pytest pytest-cov
 
     - name: Install project dependencies
+      id: install_deps
       run: |
         Write-Host "Installing Windows-specific requirements..."
-        pip install -r requirements-windows.txt
+        pip install --no-cache-dir -r requirements-windows.txt
         
         if (Test-Path "pyproject.toml") {
           pip install -e .
         }
+        
+        Write-Host "✓ Dependencies installed successfully"
 
     - name: Verify installation
       run: |
-        python -c "import fastapi; import pydantic; import langchain; print('✓ Core packages installed')"
-        pip list
+        python -c "import fastapi; import pydantic; print('✓ Core packages installed')"
+        pip list | Select-String "fastapi|pydantic|langchain|PySide6"
 
     - name: Run tests (optional)
       run: |
@@ -79,6 +77,17 @@ jobs:
           Write-Host "No tests directory found, skipping tests"
         }
       continue-on-error: true
+
+    - name: Check icon file
+      shell: pwsh
+      run: |
+        if (Test-Path "src/assets/icon.ico") {
+          $size = (Get-Item "src/assets/icon.ico").Length
+          Write-Host "✓ Icon file exists ($size bytes)"
+        } else {
+          Write-Error "Icon file not found!"
+          exit 1
+        }
 
     - name: Create PyInstaller spec file
       shell: pwsh
@@ -96,6 +105,8 @@ jobs:
           --hidden-import=fastapi `
           --hidden-import=pydantic `
           src/main.py
+        
+        Write-Host "✓ Spec file created"
 
     - name: Build executable with PyInstaller
       shell: pwsh
@@ -112,13 +123,14 @@ jobs:
         hiddenimports += ['fastapi.routing', 'pydantic.main']
 "@
         
-        $specContent = $specContent -replace "hiddenimports=\\[", "hiddenimports=[\n$additionalImports,"
+        $specContent = $specContent -replace "hiddenimports=\\[", "hiddenimports=[`n$additionalImports,"
         
         # Save modified spec
         $specContent | Out-File -FilePath "${{ env.APP_NAME }}.spec" -Encoding UTF8
         
-        # Build
-        pyinstaller --clean ${{ env.APP_NAME }}.spec
+        # Build with verbose output
+        Write-Host "Starting PyInstaller build..."
+        pyinstaller --clean --log-level=INFO ${{ env.APP_NAME }}.spec
         
         # Verify build
         if (Test-Path "dist/${{ env.APP_NAME }}/${{ env.APP_NAME }}.exe") {
@@ -126,6 +138,7 @@ jobs:
           Get-Item "dist/${{ env.APP_NAME }}/${{ env.APP_NAME }}.exe" | Select-Object Name, Length
         } else {
           Write-Error "Build failed - executable not found"
+          Get-ChildItem dist -Recurse | Select-Object FullName
           exit 1
         }
 
@@ -153,7 +166,7 @@ Finovate Audit Nexus AI - Windows Build
 Version: ${{ github.event.inputs.version || '1.0.0-dev' }}
 Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 Commit: ${{ github.sha }}
-Python: ${{ matrix.python-version }}
+Python: 3.11
 
 Installation:
 1. Extract all files to a folder
@@ -174,7 +187,7 @@ Support: support@finovate-audit.com
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.APP_NAME }}-windows-py${{ matrix.python-version }}
+        name: ${{ env.APP_NAME }}-windows-py311
         path: |
           ${{ env.BUILD_DIR }}/${{ env.APP_NAME }}.exe
           ${{ env.BUILD_DIR }}/${{ env.APP_NAME }}_portable.zip
@@ -200,7 +213,7 @@ Support: support@finovate-audit.com
     - name: Upload checksums
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.APP_NAME }}-checksums-py${{ matrix.python-version }}
+        name: ${{ env.APP_NAME }}-checksums-py311
         path: ${{ env.BUILD_DIR }}/SHA256SUMS.txt
         retention-days: 30
 
@@ -246,7 +259,7 @@ For issues and questions, please visit our GitHub repository.
 EOF
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ github.event.inputs.version || '1.0.0' }}
         name: Finovate Audit Nexus AI v${{ github.event.inputs.version || '1.0.0' }}
