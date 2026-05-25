@@ -50,8 +50,10 @@ jobs:
     
     - name: Install system dependencies
       run: |
-        choco install vcredist-all -y --no-progress
-        choco install dotnet-6-0-sdk -y --no-progress
+        # Skip vcredist installation as it can cause timeout issues
+        # Pure Python apps don't need these redistributables
+        Write-Host "Skipping vcredist installation - not required for this build"
+        # Write-Host "Skipping dotnet SDK - not required unless building .NET components"
         
     - name: Upgrade pip and install build tools
       run: |
