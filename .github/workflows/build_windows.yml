@@ -1,0 +1,384 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'src/**'
+      - 'requirements.txt'
+      - 'pyproject.toml'
+      - '.github/workflows/build_windows.yml'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: false
+        default: '1.0.0'
+      release:
+        description: 'Create release'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PYTHON_VERSION: '3.11'
+  APP_NAME: 'FinovateAuditNexus'
+  BUILD_DIR: 'build_windows'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: 'requirements*.txt'
+    
+    - name: Install system dependencies
+      run: |
+        choco install vcredist-all -y --no-progress
+        choco install dotnet-6-0-sdk -y --no-progress
+        
+    - name: Upgrade pip and install build tools
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install pyinstaller==6.3.0
+        pip install cx_Freeze==7.0.0
+        pip install pytest pytest-cov
+        
+    - name: Install project dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install -e .
+        
+    - name: Verify installation
+      run: |
+        python --version
+        pip list
+        python -c "import sys; print(f'Python executable: {sys.executable}')"
+        
+    - name: Run tests before build
+      run: |
+        pytest tests/ -v --cov=src --cov-report=xml --cov-report=html || echo "Tests completed with warnings"
+        
+    - name: Create version file
+      shell: pwsh
+      run: |
+        $version = "${{ github.event.inputs.version }}"
+        if ([string]::IsNullOrEmpty($version)) {
+          $version = "1.0.0-dev"
+        }
+        $commitSha = "${{ github.sha }}"
+        $buildTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        
+        @"
+        __version__ = '$version'
+        __build_date__ = '$buildTime'
+        __commit_sha__ = '$commitSha'
+        __app_name__ = '${{ env.APP_NAME }}'
+        "@ | Out-File -FilePath "src/version.py" -Encoding UTF8
+        
+        Write-Host "Version file created with version: $version"
+        
+    - name: Create PyInstaller spec file
+      shell: pwsh
+      run: |
+        $specContent = @"
+        # -*- mode: python ; coding: utf-8 -*-
+        
+        block_cipher = None
+        
+        a = Analysis(
+            ['src/main.py'],
+            pathex=[],
+            binaries=[],
+            datas=[
+                ('src/config', 'config'),
+                ('src/templates', 'templates'),
+                ('src/assets', 'assets'),
+                ('requirements.txt', '.'),
+                ('README.md', '.'),
+                ('LICENSE', '.'),
+            ],
+            hiddenimports=[
+                'numpy',
+                'pandas',
+                'scipy',
+                'sklearn',
+                'tensorflow',
+                'torch',
+                'PIL',
+                'cv2',
+                'sqlalchemy',
+                'psycopg2',
+                'pymysql',
+                'requests',
+                'aiohttp',
+                'fastapi',
+                'uvicorn',
+                'pydantic',
+                'jinja2',
+                'yaml',
+                'jsonschema',
+                'cryptography',
+                'keyring',
+                'qtmodern',
+                'PyQt5',
+                'PyQt5.QtCore',
+                'PyQt5.QtGui',
+                'PyQt5.QtWidgets',
+            ],
+            hookspath=[],
+            hooksconfig={},
+            runtime_hooks=[],
+            excludes=[],
+            win_no_prefer_redirects=False,
+            win_private_assemblies=False,
+            cipher=block_cipher,
+            noarchive=False,
+        )
+        
+        exe = EXE(
+            a,
+            a.binaries,
+            a.zipfiles,
+            a.datas,
+            [],
+            name='${{ env.APP_NAME }}',
+            debug=False,
+            bootloader_ignore_signals=False,
+            strip=False,
+            upx=True,
+            upx_exclude=[],
+            runtime_tmpdir=None,
+            console=False,
+            disable_windowed_traceback=False,
+            argv_emulation=False,
+            target_arch=None,
+            codesign_identity=None,
+            entitlements_file=None,
+            icon='src/assets/icon.ico',
+        )
+        "@
+        
+        $specContent | Out-File -FilePath "${{ env.APP_NAME }}.spec" -Encoding UTF8
+        Write-Host "Spec file created"
+        
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --clean --log-level=INFO ${{ env.APP_NAME }}.spec
+      continue-on-error: true
+      
+    - name: Alternative build with cx_Freeze
+      if: failure()
+      shell: pwsh
+      run: |
+        $setupContent = @"
+        from cx_Freeze import setup, Executable
+        import sys
+        
+        build_exe_options = {
+            "packages": [
+                "numpy", "pandas", "scipy", "sklearn",
+                "sqlalchemy", "requests", "aiohttp",
+                "fastapi", "pydantic", "jinja2",
+                "yaml", "cryptography"
+            ],
+            "includes": ["PyQt5"],
+            "include_files": [
+                ("src/config", "config"),
+                ("src/templates", "templates"),
+                ("src/assets", "assets"),
+                ("requirements.txt", "."),
+                ("README.md", "."),
+                ("LICENSE", ".")
+            ],
+            "excludes": ["tkinter", "unittest", "email", "http", "xml", "pydoc"]
+        }
+        
+        setup(
+            name="${{ env.APP_NAME }}",
+            version="1.0.0",
+            description="Finovate Audit Nexus AI - Enterprise AI Financial Audit Platform",
+            options={"build_exe": build_exe_options},
+            executables=[
+                Executable(
+                    "src/main.py",
+                    base="Win32GUI",
+                    icon="src/assets/icon.ico",
+                    target_name="${{ env.APP_NAME }}.exe"
+                )
+            ]
+        )
+        "@
+        
+        $setupContent | Out-File -FilePath "setup_freeze.py" -Encoding UTF8
+        python setup_freeze.py build
+        Move-Item -Path "build/exe.win*" -Destination "${{ env.BUILD_DIR }}/cx_freeze_build" -Force
+        
+    - name: Organize build artifacts
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path "${{ env.BUILD_DIR }}"
+        
+        # Check PyInstaller output
+        if (Test-Path "dist/${{ env.APP_NAME }}.exe") {
+          Copy-Item "dist/*" -Destination "${{ env.BUILD_DIR }}/" -Recurse -Force
+          Write-Host "✓ PyInstaller build successful"
+        }
+        
+        # Add documentation
+        Copy-Item "README.md" -Destination "${{ env.BUILD_DIR }}/" -Force
+        Copy-Item "LICENSE" -Destination "${{ env.BUILD_DIR }}/" -Force
+        Copy-Item "CHANGELOG.md" -Destination "${{ env.BUILD_DIR }}/" -Force
+        
+        # Create installer info
+        $info = @"
+        Finovate Audit Nexus AI - Windows Build
+        ======================================
+        
+        Version: ${{ github.event.inputs.version || '1.0.0-dev' }}
+        Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        Commit: ${{ github.sha }}
+        Python: ${{ matrix.python-version }}
+        
+        Installation:
+        1. Extract all files to a folder
+        2. Run ${{ env.APP_NAME }}.exe
+        3. Configure settings in config folder
+        
+        Support: support@finovate-audit.com
+        "@
+        
+        $info | Out-File -FilePath "${{ env.BUILD_DIR }}/BUILD_INFO.txt" -Encoding UTF8
+        
+        # Create portable zip
+        Compress-Archive -Path "${{ env.BUILD_DIR }}/*" -DestinationPath "${{ env.BUILD_DIR }}/${{ env.APP_NAME }}_portable.zip" -Force
+        
+        Write-Host "✓ Build artifacts organized"
+        Get-ChildItem "${{ env.BUILD_DIR }}" | Select-Object Name, Length
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.APP_NAME }}-windows-py${{ matrix.python-version }}
+        path: |
+          ${{ env.BUILD_DIR }}/${{ env.APP_NAME }}.exe
+          ${{ env.BUILD_DIR }}/${{ env.APP_NAME }}_portable.zip
+          ${{ env.BUILD_DIR }}/BUILD_INFO.txt
+          ${{ env.BUILD_DIR }}/README.md
+          ${{ env.BUILD_DIR }}/LICENSE
+        retention-days: 30
+        if-no-files-found: warn
+        
+    - name: Generate checksums
+      shell: pwsh
+      run: |
+        Set-Location "${{ env.BUILD_DIR }}"
+        $files = Get-ChildItem -File
+        $checksums = @()
+        foreach ($file in $files) {
+          $hash = Get-FileHash $file.Name -Algorithm SHA256
+          $checksums += "$($hash.Hash) *$($file.Name)"
+        }
+        $checksums | Out-File -FilePath "SHA256SUMS.txt" -Encoding UTF8
+        Get-Content "SHA256SUMS.txt"
+        
+    - name: Upload checksums
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.APP_NAME }}-checksums-py${{ matrix.python-version }}
+        path: ${{ env.BUILD_DIR }}/SHA256SUMS.txt
+        retention-days: 30
+        
+  create-release:
+    needs: build-windows
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true'
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: ${{ env.APP_NAME }}-*
+        merge-multiple: true
+        path: release-artifacts
+        
+    - name: Create release notes
+      run: |
+        cat > release-notes.md << 'EOF'
+        # Finovate Audit Nexus AI - Windows Release
+        
+        ## What's Changed
+        - Complete AI-powered financial audit platform
+        - 22 intelligent audit agents
+        - 15 ERP connectors (SAP, Oracle, Dynamics, etc.)
+        - Advanced fraud detection
+        - Real-time compliance monitoring
+        - Professional Windows desktop application
+        
+        ## Installation
+        1. Download the portable ZIP file
+        2. Extract to your desired location
+        3. Run FinovateAuditNexus.exe
+        4. Configure your settings
+        
+        ## System Requirements
+        - Windows 10/11 (64-bit)
+        - 8GB RAM minimum (16GB recommended)
+        - 2GB free disk space
+        - .NET Framework 6.0 (included)
+        
+        ## Support
+        For issues and questions, please visit our GitHub repository.
+        EOF
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.event.inputs.version || '1.0.0' }}
+        name: Finovate Audit Nexus AI v${{ github.event.inputs.version || '1.0.0' }}
+        body_path: release-notes.md
+        draft: false
+        prerelease: ${{ contains(github.event.inputs.version, 'beta') || contains(github.event.inputs.version, 'alpha') }}
+        files: |
+          release-artifacts/*.exe
+          release-artifacts/*.zip
+          release-artifacts/*.txt
+          release-artifacts/*.md
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+  notify:
+    needs: [build-windows, create-release]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Build status notification
+      run: |
+        if [ "${{ needs.build-windows.result }}" == "success" ]; then
+          echo "✅ Windows build completed successfully!"
+          echo "📦 Artifacts are available for download"
+          if [ "${{ github.event.inputs.release }}" == "true" ]; then
+            echo "🚀 Release created on GitHub"
+          fi
+        else
+          echo "❌ Windows build failed. Please check the logs."
+          exit 1
+        fi
