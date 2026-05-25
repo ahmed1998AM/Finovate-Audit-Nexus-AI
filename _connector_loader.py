@@ -15,5 +15,11 @@ def load_connector(relative_path: str, module_name: str) -> ModuleType:
         raise ImportError(f"Cannot load connector module '{module_name}' from '{target}'")
 
     module = module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except FileNotFoundError as exc:
+        raise ImportError(
+            f"Cannot load connector module '{module_name}' from '{target}'"
+        ) from exc
+
     return module
