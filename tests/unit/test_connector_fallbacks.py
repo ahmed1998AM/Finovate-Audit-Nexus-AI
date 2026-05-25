@@ -30,3 +30,19 @@ def test_xero_fallback_class_when_sdk_missing():
     mod = _reload_with_loader_failure("xero_connector")
     instance = mod.XeroConnector(config={"b": 2})
     assert getattr(instance, "config", {}) == {"b": 2}
+
+
+def test_fallback_exports_are_available():
+    qb = _reload_with_loader_failure("quickbooks_connector")
+    xr = _reload_with_loader_failure("xero_connector")
+
+    assert "QuickBooksConnector" in getattr(qb, "__all__", [])
+    assert "XeroConnector" in getattr(xr, "__all__", [])
+
+
+def test_fallback_default_config_is_empty_dict():
+    qb = _reload_with_loader_failure("quickbooks_connector")
+    xr = _reload_with_loader_failure("xero_connector")
+
+    assert qb.QuickBooksConnector().config == {}
+    assert xr.XeroConnector().config == {}

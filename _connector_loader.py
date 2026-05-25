@@ -8,7 +8,10 @@ from types import ModuleType
 def load_connector(relative_path: str, module_name: str) -> ModuleType:
     """Load a connector implementation module from a repository-relative path."""
     root = Path(__file__).resolve().parent
-    target = root / relative_path
+    target = (root / relative_path).resolve()
+
+    if not target.exists() or not target.is_file():
+        raise ImportError(f"Cannot load connector module '{module_name}' from '{target}'")
 
     spec = spec_from_file_location(module_name, target)
     if spec is None or spec.loader is None:
