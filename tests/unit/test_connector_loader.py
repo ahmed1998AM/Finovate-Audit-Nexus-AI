@@ -13,12 +13,11 @@ def test_load_connector_returns_module():
 
 
 def test_load_connector_raises_for_missing_file():
+    import pytest
+
     missing = "connectors/not_real_connector/connector.py"
-    try:
+    with pytest.raises(ImportError, match="Cannot load connector module"):
         load_connector(missing, "missing_connector_impl")
-        assert False, "Expected ImportError for a missing connector module"
-    except ImportError as exc:
-        assert "Cannot load connector module" in str(exc)
 
 
 def test_root_compatibility_module_exports_sap():
@@ -65,6 +64,7 @@ def test_shim_toggle_env_var_behavior(monkeypatch):
 
 
 def test_load_connector_raises_on_missing_loader(monkeypatch):
+    import pytest
     import _connector_loader as cl
 
     class _Spec:
@@ -72,20 +72,15 @@ def test_load_connector_raises_on_missing_loader(monkeypatch):
 
     monkeypatch.setattr(cl, "spec_from_file_location", lambda *a, **k: _Spec())
 
-    try:
+    with pytest.raises(ImportError, match="Cannot load connector module"):
         cl.load_connector("connectors/sap_connector/connector.py", "sap_connector_missing_loader")
-        assert False, "Expected ImportError when loader is unavailable"
-    except ImportError as exc:
-        assert "Cannot load connector module" in str(exc)
 
 
 def test_load_connector_raises_on_missing_spec(monkeypatch):
+    import pytest
     import _connector_loader as cl
 
     monkeypatch.setattr(cl, "spec_from_file_location", lambda *a, **k: None)
 
-    try:
+    with pytest.raises(ImportError, match="Cannot load connector module"):
         cl.load_connector("connectors/sap_connector/connector.py", "sap_connector_missing_spec")
-        assert False, "Expected ImportError when spec creation fails"
-    except ImportError as exc:
-        assert "Cannot load connector module" in str(exc)
