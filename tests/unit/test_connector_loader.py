@@ -62,3 +62,30 @@ def test_shim_toggle_env_var_behavior(monkeypatch):
 
     monkeypatch.setenv("FINOVATE_DISABLE_TEST_SHIMS", "0")
     assert c._should_install_test_shims() is True
+
+
+def test_load_connector_raises_on_missing_loader(monkeypatch):
+    import _connector_loader as cl
+
+    class _Spec:
+        loader = None
+
+    monkeypatch.setattr(cl, "spec_from_file_location", lambda *a, **k: _Spec())
+
+    try:
+        cl.load_connector("connectors/sap_connector/connector.py", "sap_connector_missing_loader")
+        assert False, "Expected ImportError when loader is unavailable"
+    except ImportError as exc:
+        assert "Cannot load connector module" in str(exc)
+
+
+def test_load_connector_raises_on_missing_spec(monkeypatch):
+    import _connector_loader as cl
+
+    monkeypatch.setattr(cl, "spec_from_file_location", lambda *a, **k: None)
+
+    try:
+        cl.load_connector("connectors/sap_connector/connector.py", "sap_connector_missing_spec")
+        assert False, "Expected ImportError when spec creation fails"
+    except ImportError as exc:
+        assert "Cannot load connector module" in str(exc)
