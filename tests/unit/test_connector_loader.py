@@ -21,12 +21,31 @@ def test_load_connector_raises_for_missing_file():
         assert "Cannot load connector module" in str(exc)
 
 
-def test_root_compatibility_module_exports():
+def test_root_compatibility_module_exports_sap():
     import sap_connector
 
     assert hasattr(sap_connector, "SAPErpConnector")
     assert hasattr(sap_connector, "SAPConnectionConfig")
     assert "SAPErpConnector" in getattr(sap_connector, "__all__", [])
+
+
+def test_root_compatibility_modules_import():
+    modules = [
+        ("dynamics_connector", "DynamicsErpConnector"),
+        ("ebs_connector", "EBSErpConnector"),
+        ("infor_connector", "InforErpConnector"),
+        ("netsuite_connector", "NetSuiteErpConnector"),
+        ("oracle_connector", "OracleErpConnector"),
+        ("sage_connector", "SageErpConnector"),
+        ("sap_connector", "SAPErpConnector"),
+        ("workday_connector", "WorkdayErpConnector"),
+        ("quickbooks_connector", "QuickBooksConnector"),
+        ("xero_connector", "XeroConnector"),
+    ]
+
+    for module_name, symbol in modules:
+        module = __import__(module_name)
+        assert hasattr(module, symbol)
 
 
 def test_connector_source_file_exists():

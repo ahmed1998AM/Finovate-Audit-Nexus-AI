@@ -78,10 +78,13 @@ def _install_test_dependency_shims():
 _install_test_dependency_shims()
 
 # Add project paths
-sys.path.insert(0, '/workspace')
-sys.path.insert(0, '/workspace/backend')
-sys.path.insert(0, '/workspace/connectors')
-sys.path.insert(0, '/workspace/agents')
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+for rel in ('', 'backend', 'connectors', 'agents'):
+    candidate = str(REPO_ROOT / rel) if rel else str(REPO_ROOT)
+    if candidate not in sys.path:
+        sys.path.insert(0, candidate)
 
 
 @pytest.fixture(scope="session")
