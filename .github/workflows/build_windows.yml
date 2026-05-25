@@ -64,8 +64,37 @@ jobs:
         
     - name: Install project dependencies
       run: |
-        pip install -r requirements.txt
-        pip install -e .
+        # Try Windows-specific requirements first, fallback to main requirements
+        if (Test-Path "requirements-windows.txt") {
+          Write-Host "Using Windows-specific requirements..."
+          pip install -r requirements-windows.txt
+        } else {
+          Write-Host "Using standard requirements with exclusions..."
+          # Install main requirements but skip problematic packages
+          pip install fastapi==0.109.0 uvicorn[standard]==0.27.0 python-multipart==0.0.6
+          pip install pydantic==2.5.3 pydantic-settings==2.1.0
+          pip install sqlalchemy==2.0.25 alembic==1.13.1 aiosqlite==0.19.0
+          pip install python-jose[cryptography]==3.3.0 passlib[bcrypt]==1.7.4 bcrypt==4.1.2
+          pip install langchain==0.1.0 langgraph==0.0.28 crewai==0.30.8
+          pip install openai==1.10.0 anthropic==0.8.1
+          pip install transformers==4.37.2 torch==2.2.0 sentence-transformers==2.3.1
+          pip install pymupdf==1.23.8 pytesseract==0.3.10 pillow==10.2.0
+          pip install pandas==2.2.0 openpyxl==3.1.2 numpy==1.26.3
+          pip install qdrant-client==1.7.0
+          pip install pytest==7.4.4 pytest-asyncio==0.23.3 httpx==0.26.0
+          pip install python-dotenv==1.0.0 aiofiles==23.2.1 celery==5.3.6 redis==5.0.1
+          pip install plotly==5.18.0 reportlab==4.0.8
+          pip install PySide6==6.6.1 PySide6-Essentials==6.6.1
+          pip install requests==2.31.0 zeep==4.2.1 pyodbc==5.1.0
+          pip install loguru==0.7.2 prometheus-client==0.19.0
+          pip install black==24.1.1 flake8==7.0.0 mypy==1.8.0
+          pip install pywin32==306 comtypes==1.2.0
+        }
+        
+        # Install in editable mode if pyproject.toml exists
+        if (Test-Path "pyproject.toml") {
+          pip install -e .
+        }
         
     - name: Verify installation
       run: |
