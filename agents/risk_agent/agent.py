@@ -466,6 +466,85 @@ class RiskScoringAgent:
             }
             return json.dumps(data, indent=2, ensure_ascii=False)
         return ""
+    
+    def calculate_risk_score(self, entity_data: Dict[str, Any]) -> float:
+        """
+        حساب نتيجة المخاطر الشاملة للكيان
+        
+        Args:
+            entity_data: بيانات الكيان المالية والتشغيلية
+            
+        Returns:
+            float: نتيجة المخاطر من 0 إلى 100
+        """
+        financial_risk = self.calculate_financial_risk(
+            entity_data.get('financial', {})
+        )
+        fraud_risk = self.calculate_fraud_risk(
+            entity_data.get('fraud_indicators', {})
+        )
+        compliance_risk = self.calculate_compliance_risk(
+            entity_data.get('compliance', {})
+        )
+        tax_risk = self.calculate_tax_risk(
+            entity_data.get('tax', {})
+        )
+        
+        category_scores = {
+            RiskCategory.FINANCIAL.value: financial_risk,
+            RiskCategory.FRAUD.value: fraud_risk,
+            RiskCategory.COMPLIANCE.value: compliance_risk,
+            RiskCategory.TAX.value: tax_risk
+        }
+        
+        # حساب النتيجة الإجمالية
+        overall_score = sum(
+            score * self.category_weights.get(cat, 0.1)
+            for cat, score in category_scores.items()
+        )
+        
+        return min(100, overall_score)
+    
+    def assess(self, entity_type: str, entity_id: str, 
+               entity_data: Dict[str, Any]) -> RiskAssessment:
+        """
+        إجراء تقييم مخاطر شامل للكيان
+        
+        Args:
+            entity_type: نوع الكيان (company, account, transaction)
+            entity_id: معرف الكيان
+            entity_data: بيانات الكيان
+            
+        Returns:
+            RiskAssessment: تقييم المخاطر الكامل
+        """
+        # حساب جميع أنواع المخاطر
+        financial_risk = self.calculate_financial_risk(
+            entity_data.get('financial', {})
+        )
+        fraud_risk = self.calculate_fraud_risk(
+            entity_data.get('fraud_indicators', {})
+        )
+        compliance_risk = self.calculate_compliance_risk(
+            entity_data.get('compliance', {})
+        )
+        tax_risk = self.calculate_tax_risk(
+            entity_data.get('tax', {})
+        )
+        
+        category_scores = {
+            RiskCategory.FINANCIAL.value: financial_risk,
+            RiskCategory.FRAUD.value: fraud_risk,
+            RiskCategory.COMPLIANCE.value: compliance_risk,
+            RiskCategory.TAX.value: tax_risk
+        }
+        
+        # إنشاء التقييم الشامل
+        return self.create_assessment(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            category_scores=category_scores
+        )
 
 
 # مثال استخدام
