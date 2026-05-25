@@ -9,11 +9,82 @@ import sys
 from datetime import datetime, timedelta
 from unittest.mock import Mock, MagicMock
 
+import types
+
+
+def _install_test_dependency_shims():
+    """Install minimal shims for optional third-party deps unavailable in CI."""
+    if 'loguru' not in sys.modules:
+        m = types.ModuleType('loguru')
+        class _Logger:
+            def __getattr__(self, _):
+                return lambda *a, **k: None
+        m.logger = _Logger()
+        sys.modules['loguru'] = m
+
+    if 'numpy' not in sys.modules:
+        m = types.ModuleType('numpy')
+        m.mean = lambda values: (sum(values) / len(values)) if values else 0.0
+        m.std = lambda values: 0.0
+        m.array = lambda values: list(values)
+        class _Random:
+            @staticmethod
+            def rand(*shape):
+                total = 1
+                for s in shape:
+                    total *= s
+                return [0.0] * total
+        m.random = _Random
+        sys.modules['numpy'] = m
+
+    if 'pandas' not in sys.modules:
+        m = types.ModuleType('pandas')
+        class DataFrame(list):
+            def __init__(self, data=None, *args, **kwargs):
+                super().__init__(data or [])
+        class Series(list):
+            pass
+        m.DataFrame = DataFrame
+        m.Series = Series
+        m.to_datetime = lambda value, *args, **kwargs: value
+        sys.modules['pandas'] = m
+
+    if 'requests' not in sys.modules:
+        m = types.ModuleType('requests')
+        class Response:
+            def __init__(self, status_code=200, data=None):
+                self.status_code = status_code
+                self._data = data or {}
+                self.text = str(self._data)
+            def json(self):
+                return self._data
+        m.Response = Response
+        m.get = m.post = m.put = m.delete = lambda *args, **kwargs: Response()
+        sys.modules['requests'] = m
+
+    if 'authlib' not in sys.modules:
+        authlib = types.ModuleType('authlib')
+        integrations = types.ModuleType('authlib.integrations')
+        requests_client = types.ModuleType('authlib.integrations.requests_client')
+        class OAuth2Session:
+            def __init__(self, *args, **kwargs):
+                pass
+        requests_client.OAuth2Session = OAuth2Session
+        sys.modules['authlib'] = authlib
+        sys.modules['authlib.integrations'] = integrations
+        sys.modules['authlib.integrations.requests_client'] = requests_client
+
+
+_install_test_dependency_shims()
+
 # Add project paths
-sys.path.insert(0, '/workspace')
-sys.path.insert(0, '/workspace/backend')
-sys.path.insert(0, '/workspace/connectors')
-sys.path.insert(0, '/workspace/agents')
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+for rel in ('', 'backend', 'connectors', 'agents'):
+    candidate = str(REPO_ROOT / rel) if rel else str(REPO_ROOT)
+    if candidate not in sys.path:
+        sys.path.insert(0, candidate)
 
 
 @pytest.fixture(scope="session")
