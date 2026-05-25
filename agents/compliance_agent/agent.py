@@ -526,6 +526,151 @@ class ComplianceStandardsAgent:
 
 
 # مثال على الاستخدام
+
+    def verify_compliance(self, financial_data: Dict[str, Any], standards: List[str] = None) -> Dict[str, Any]:
+        """
+        التحقق من الالتزام بالمعايير المحددة
+        
+        Args:
+            financial_data: البيانات المالية
+            standards: قائمة المعايير للتحقق منها
+            
+        Returns:
+            Dict: تقرير الالتزام
+        """
+        if standards is None:
+            standards = ['egyptian', 'ifrs', 'isa']
+        
+        report = {
+            'agent': self.agent_name,
+            'timestamp': datetime.now().isoformat(),
+            'verification_id': hashlib.md5(str(datetime.now()).encode()).hexdigest()[:12],
+            'standards_verified': standards,
+            'compliance_score': 0.0,
+            'findings': [],
+            'violations': [],
+            'recommendations': [],
+            'risk_level': 'LOW'
+        }
+        
+        total_checks = 0
+        passed_checks = 0
+        
+        # التحقق من كل معيار مطلوب
+        if 'egyptian' in standards or 'ifrs' in standards:
+            check_result = self._check_financial_statement_presentation(financial_data)
+            report['findings'].append(check_result)
+            total_checks += 1
+            if check_result['status'] == 'COMPLIANT':
+                passed_checks += 1
+            else:
+                report['violations'].append({
+                    'standard': check_result.get('standard', 'Financial Statement Presentation'),
+                    'issue': check_result['issue'],
+                    'severity': check_result.get('severity', 'MEDIUM'),
+                    'recommendation': check_result.get('recommendation', '')
+                })
+        
+        if 'tax' in standards or 'egyptian' in standards:
+            check_result = self._check_tax_compliance(financial_data)
+            report['findings'].append(check_result)
+            total_checks += 1
+            if check_result['status'] == 'COMPLIANT':
+                passed_checks += 1
+            else:
+                report['violations'].append({
+                    'standard': 'Tax Compliance',
+                    'issue': check_result['issue'],
+                    'severity': check_result.get('severity', 'HIGH'),
+                    'recommendation': check_result.get('recommendation', '')
+                })
+        
+        # حساب درجة الالتزام
+        if total_checks > 0:
+            report['compliance_score'] = round((passed_checks / total_checks) * 100, 2)
+        
+        # تحديد مستوى الخطر
+        score = report['compliance_score']
+        if score >= 90:
+            report['risk_level'] = 'LOW'
+        elif score >= 70:
+            report['risk_level'] = 'MEDIUM'
+        elif score >= 50:
+            report['risk_level'] = 'HIGH'
+        else:
+            report['risk_level'] = 'CRITICAL'
+        
+        return report
+    
+    def check(self, item_type: str, item_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        فحص عنصر محدد للتحقق من امتثاله
+        
+        Args:
+            item_type: نوع العنصر (journal_entry, account_balance, transaction, etc.)
+            item_data: بيانات العنصر
+            
+        Returns:
+            Dict: نتيجة الفحص
+        """
+        result = {
+            'item_type': item_type,
+            'timestamp': datetime.now().isoformat(),
+            'status': 'PASS',
+            'issues': [],
+            'recommendations': []
+        }
+        
+        if item_type == 'journal_entry':
+            # فحص القيود اليومية
+            if not item_data.get('debit_account'):
+                result['status'] = 'FAIL'
+                result['issues'].append('Missing debit account')
+            
+            if not item_data.get('credit_account'):
+                result['status'] = 'FAIL'
+                result['issues'].append('Missing credit account')
+            
+            debit = item_data.get('debit_amount', 0)
+            credit = item_data.get('credit_amount', 0)
+            
+            if abs(debit - credit) > 0.01:
+                result['status'] = 'FAIL'
+                result['issues'].append(f'Debit ({debit}) != Credit ({credit})')
+            
+            if item_data.get('description') and len(item_data['description']) < 10:
+                result['status'] = 'WARNING'
+                result['issues'].append('Description too short')
+                result['recommendations'].append('Add detailed description for audit trail')
+        
+        elif item_type == 'account_balance':
+            # فحص أرصدة الحسابات
+            balance = item_data.get('balance', 0)
+            
+            if balance < 0 and item_data.get('account_type') in ['asset', 'expense']:
+                result['status'] = 'WARNING'
+                result['issues'].append(f'Negative balance in {item_data.get("account_type")} account')
+                result['recommendations'].append('Review account classification')
+        
+        elif item_type == 'transaction':
+            # فحص المعاملات
+            amount = item_data.get('amount', 0)
+            date = item_data.get('date')
+            
+            if amount <= 0:
+                result['status'] = 'FAIL'
+                result['issues'].append('Invalid transaction amount')
+            
+            if not date:
+                result['status'] = 'FAIL'
+                result['issues'].append('Missing transaction date')
+            
+            if amount > 1000000:  # معامل كبير
+                result['status'] = 'REVIEW'
+                result['recommendations'].append('Large transaction requires additional documentation')
+        
+        return result
+
 if __name__ == '__main__':
     agent = ComplianceStandardsAgent()
     
@@ -607,3 +752,4 @@ if __name__ == '__main__':
         print(f"  {item['bracket']} @ {item['rate']} = {item['tax_amount']:,.2f} جنيه")
     
     print("\n✅ اكتمل تحليل الالتزام بنجاح!")
+
