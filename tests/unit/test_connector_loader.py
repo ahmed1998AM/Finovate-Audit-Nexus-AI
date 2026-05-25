@@ -51,3 +51,14 @@ def test_root_compatibility_modules_import():
 def test_connector_source_file_exists():
     path = Path("connectors/sap_connector/connector.py")
     assert path.exists()
+
+
+def test_shim_toggle_env_var_behavior(monkeypatch):
+    import importlib
+    c = importlib.import_module("tests.conftest")
+
+    monkeypatch.setenv("FINOVATE_DISABLE_TEST_SHIMS", "1")
+    assert c._should_install_test_shims() is False
+
+    monkeypatch.setenv("FINOVATE_DISABLE_TEST_SHIMS", "0")
+    assert c._should_install_test_shims() is True
