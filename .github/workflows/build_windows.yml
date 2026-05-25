@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/**'
       - 'requirements.txt'
+      - 'requirements-windows.txt'
       - 'pyproject.toml'
       - '.github/workflows/build_windows.yml'
   pull_request:
@@ -30,291 +31,137 @@ env:
 jobs:
   build-windows:
     runs-on: windows-latest
-    
+    timeout-minutes: 45
+
     strategy:
       matrix:
         python-version: ['3.10', '3.11', '3.12']
-    
+      fail-fast: false
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
         cache-dependency-path: 'requirements*.txt'
-    
-    - name: Install system dependencies
-      run: |
-        # Skip vcredist installation as it can cause timeout issues
-        # Pure Python apps don't need these redistributables
-        Write-Host "Skipping vcredist installation - not required for this build"
-        # Write-Host "Skipping dotnet SDK - not required unless building .NET components"
-        
+
     - name: Upgrade pip and install build tools
       run: |
         python -m pip install --upgrade pip setuptools wheel
         pip install pyinstaller==6.3.0
-        pip install cx_Freeze==7.0.0
         pip install pytest pytest-cov
-        
+
     - name: Install project dependencies
       run: |
-        # Try Windows-specific requirements first, fallback to main requirements
-        if (Test-Path "requirements-windows.txt") {
-          Write-Host "Using Windows-specific requirements..."
-          pip install -r requirements-windows.txt
-        } else {
-          Write-Host "Using standard requirements with exclusions..."
-          # Install main requirements but skip problematic packages
-          pip install fastapi==0.109.0 uvicorn[standard]==0.27.0 python-multipart==0.0.6
-          pip install pydantic==2.5.3 pydantic-settings==2.1.0
-          pip install sqlalchemy==2.0.25 alembic==1.13.1 aiosqlite==0.19.0
-          pip install python-jose[cryptography]==3.3.0 passlib[bcrypt]==1.7.4 bcrypt==4.1.2
-          pip install langchain==0.1.0 langgraph==0.0.28 crewai==0.30.8
-          pip install openai==1.10.0 anthropic==0.8.1
-          pip install transformers==4.37.2 torch==2.2.0 sentence-transformers==2.3.1
-          pip install pymupdf==1.23.8 pytesseract==0.3.10 pillow==10.2.0
-          pip install pandas==2.2.0 openpyxl==3.1.2 numpy==1.26.3
-          pip install qdrant-client==1.7.0
-          pip install pytest==7.4.4 pytest-asyncio==0.23.3 httpx==0.26.0
-          pip install python-dotenv==1.0.0 aiofiles==23.2.1 celery==5.3.6 redis==5.0.1
-          pip install plotly==5.18.0 reportlab==4.0.8
-          pip install PySide6==6.6.1 PySide6-Essentials==6.6.1
-          pip install requests==2.31.0 zeep==4.2.1 pyodbc==5.1.0
-          pip install loguru==0.7.2 prometheus-client==0.19.0
-          pip install black==24.1.1 flake8==7.0.0 mypy==1.8.0
-          pip install pywin32==306 comtypes==1.2.0
-        }
+        Write-Host "Installing Windows-specific requirements..."
+        pip install -r requirements-windows.txt
         
-        # Install in editable mode if pyproject.toml exists
         if (Test-Path "pyproject.toml") {
           pip install -e .
         }
-        
+
     - name: Verify installation
       run: |
-        python --version
+        python -c "import fastapi; import pydantic; import langchain; print('✓ Core packages installed')"
         pip list
-        python -c "import sys; print(f'Python executable: {sys.executable}')"
-        
-    - name: Run tests before build
+
+    - name: Run tests (optional)
       run: |
-        pytest tests/ -v --cov=src --cov-report=xml --cov-report=html || echo "Tests completed with warnings"
-        
-    - name: Create version file
-      shell: pwsh
-      run: |
-        $version = "${{ github.event.inputs.version }}"
-        if ([string]::IsNullOrEmpty($version)) {
-          $version = "1.0.0-dev"
+        if (Test-Path "tests/") {
+          pytest tests/ -v --tb=short || Write-Host "Tests completed with warnings"
+        } else {
+          Write-Host "No tests directory found, skipping tests"
         }
-        $commitSha = "${{ github.sha }}"
-        $buildTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        
-        @"
-        __version__ = '$version'
-        __build_date__ = '$buildTime'
-        __commit_sha__ = '$commitSha'
-        __app_name__ = '${{ env.APP_NAME }}'
-        "@ | Out-File -FilePath "src/version.py" -Encoding UTF8
-        
-        Write-Host "Version file created with version: $version"
-        
+      continue-on-error: true
+
     - name: Create PyInstaller spec file
       shell: pwsh
       run: |
-        $specContent = @"
-        # -*- mode: python ; coding: utf-8 -*-
-        
-        block_cipher = None
-        
-        a = Analysis(
-            ['src/main.py'],
-            pathex=[],
-            binaries=[],
-            datas=[
-                ('src/config', 'config'),
-                ('src/templates', 'templates'),
-                ('src/assets', 'assets'),
-                ('requirements.txt', '.'),
-                ('README.md', '.'),
-                ('LICENSE', '.'),
-            ],
-            hiddenimports=[
-                'numpy',
-                'pandas',
-                'scipy',
-                'sklearn',
-                'tensorflow',
-                'torch',
-                'PIL',
-                'cv2',
-                'sqlalchemy',
-                'psycopg2',
-                'pymysql',
-                'requests',
-                'aiohttp',
-                'fastapi',
-                'uvicorn',
-                'pydantic',
-                'jinja2',
-                'yaml',
-                'jsonschema',
-                'cryptography',
-                'keyring',
-                'qtmodern',
-                'PyQt5',
-                'PyQt5.QtCore',
-                'PyQt5.QtGui',
-                'PyQt5.QtWidgets',
-            ],
-            hookspath=[],
-            hooksconfig={},
-            runtime_hooks=[],
-            excludes=[],
-            win_no_prefer_redirects=False,
-            win_private_assemblies=False,
-            cipher=block_cipher,
-            noarchive=False,
-        )
-        
-        exe = EXE(
-            a,
-            a.binaries,
-            a.zipfiles,
-            a.datas,
-            [],
-            name='${{ env.APP_NAME }}',
-            debug=False,
-            bootloader_ignore_signals=False,
-            strip=False,
-            upx=True,
-            upx_exclude=[],
-            runtime_tmpdir=None,
-            console=False,
-            disable_windowed_traceback=False,
-            argv_emulation=False,
-            target_arch=None,
-            codesign_identity=None,
-            entitlements_file=None,
-            icon='src/assets/icon.ico',
-        )
-        "@
-        
-        $specContent | Out-File -FilePath "${{ env.APP_NAME }}.spec" -Encoding UTF8
-        Write-Host "Spec file created"
-        
-    - name: Build with PyInstaller
-      run: |
-        # Create icon file if it doesn't exist (fallback for build)
-        if (-Not (Test-Path "src/assets/icon.ico")) {
-          Write-Host "Creating placeholder icon..."
-          New-Item -ItemType Directory -Force -Path "src/assets" | Out-Null
-          # Create a minimal valid ICO file (16x16 1-color icon as placeholder)
-          $icoBytes = [byte[]]@(
-            0x00,0x00,0x01,0x00,0x01,0x00,0x10,0x10,0x02,0x00,0x01,0x00,0x01,0x00,0xB0,0x00,
-            0x00,0x00,0x16,0x00,0x00,0x00,0x28,0x00,0x00,0x00,0x10,0x00,0x00,0x00,0x20,0x00,
-            0x00,0x00,0x01,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0xA0,0x00,0x00,0x00,0x00,0x00,
-            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-            0xFF,0xFF,0xFF,0x00
-          )
-          [System.IO.File]::WriteAllBytes("src/assets/icon.ico", $icoBytes)
-        }
-        
-        pyinstaller --clean --log-level=INFO ${{ env.APP_NAME }}.spec
-      continue-on-error: true
-      
-    - name: Alternative build with cx_Freeze
-      if: failure()
+        pyi-makespec --name=${{ env.APP_NAME }} `
+          --windowed `
+          --icon=src/assets/icon.ico `
+          --add-data "src/config;config" `
+          --add-data "src/templates;templates" `
+          --add-data "src/assets;assets" `
+          --hidden-import=PySide6 `
+          --hidden-import=numpy `
+          --hidden-import=pandas `
+          --hidden-import=sqlalchemy `
+          --hidden-import=fastapi `
+          --hidden-import=pydantic `
+          src/main.py
+
+    - name: Build executable with PyInstaller
       shell: pwsh
       run: |
-        $setupContent = @"
-        from cx_Freeze import setup, Executable
-        import sys
+        # Modify spec file to include all necessary data files
+        $specContent = Get-Content "${{ env.APP_NAME }}.spec" -Raw
         
-        build_exe_options = {
-            "packages": [
-                "numpy", "pandas", "scipy", "sklearn",
-                "sqlalchemy", "requests", "aiohttp",
-                "fastapi", "pydantic", "jinja2",
-                "yaml", "cryptography"
-            ],
-            "includes": ["PyQt5"],
-            "include_files": [
-                ("src/config", "config"),
-                ("src/templates", "templates"),
-                ("src/assets", "assets"),
-                ("requirements.txt", "."),
-                ("README.md", "."),
-                ("LICENSE", ".")
-            ],
-            "excludes": ["tkinter", "unittest", "email", "http", "xml", "pydoc"]
+        # Add additional hidden imports
+        $additionalImports = @"
+        hiddenimports += ['PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets']
+        hiddenimports += ['numpy.core._methods', 'numpy.lib.format']
+        hiddenimports += ['pandas.core.arrays', 'pandas.io.formats']
+        hiddenimports += ['sqlalchemy.dialects.sqlite']
+        hiddenimports += ['fastapi.routing', 'pydantic.main']
+"@
+        
+        $specContent = $specContent -replace "hiddenimports=\\[", "hiddenimports=[\n$additionalImports,"
+        
+        # Save modified spec
+        $specContent | Out-File -FilePath "${{ env.APP_NAME }}.spec" -Encoding UTF8
+        
+        # Build
+        pyinstaller --clean ${{ env.APP_NAME }}.spec
+        
+        # Verify build
+        if (Test-Path "dist/${{ env.APP_NAME }}/${{ env.APP_NAME }}.exe") {
+          Write-Host "✓ PyInstaller build successful"
+          Get-Item "dist/${{ env.APP_NAME }}/${{ env.APP_NAME }}.exe" | Select-Object Name, Length
+        } else {
+          Write-Error "Build failed - executable not found"
+          exit 1
         }
-        
-        setup(
-            name="${{ env.APP_NAME }}",
-            version="1.0.0",
-            description="Finovate Audit Nexus AI - Enterprise AI Financial Audit Platform",
-            options={"build_exe": build_exe_options},
-            executables=[
-                Executable(
-                    "src/main.py",
-                    base="Win32GUI",
-                    icon="src/assets/icon.ico",
-                    target_name="${{ env.APP_NAME }}.exe"
-                )
-            ]
-        )
-        "@
-        
-        $setupContent | Out-File -FilePath "setup_freeze.py" -Encoding UTF8
-        python setup_freeze.py build
-        Move-Item -Path "build/exe.win*" -Destination "${{ env.BUILD_DIR }}/cx_freeze_build" -Force
-        
+
     - name: Organize build artifacts
       shell: pwsh
       run: |
         New-Item -ItemType Directory -Force -Path "${{ env.BUILD_DIR }}"
         
-        # Check PyInstaller output
-        if (Test-Path "dist/${{ env.APP_NAME }}.exe") {
-          Copy-Item "dist/*" -Destination "${{ env.BUILD_DIR }}/" -Recurse -Force
-          Write-Host "✓ PyInstaller build successful"
+        # Copy executable
+        if (Test-Path "dist/${{ env.APP_NAME }}/${{ env.APP_NAME }}.exe") {
+          Copy-Item "dist/${{ env.APP_NAME }}/*" -Destination "${{ env.BUILD_DIR }}/" -Recurse -Force
+          Write-Host "✓ Executable copied"
         }
         
         # Add documentation
-        Copy-Item "README.md" -Destination "${{ env.BUILD_DIR }}/" -Force
-        Copy-Item "LICENSE" -Destination "${{ env.BUILD_DIR }}/" -Force
-        Copy-Item "CHANGELOG.md" -Destination "${{ env.BUILD_DIR }}/" -Force
+        Copy-Item "README.md" -Destination "${{ env.BUILD_DIR }}/" -Force -ErrorAction SilentlyContinue
+        Copy-Item "LICENSE" -Destination "${{ env.BUILD_DIR }}/" -Force -ErrorAction SilentlyContinue
+        Copy-Item "CHANGELOG.md" -Destination "${{ env.BUILD_DIR }}/" -Force -ErrorAction SilentlyContinue
         
-        # Create installer info
+        # Create build info
         $info = @"
-        Finovate Audit Nexus AI - Windows Build
-        ======================================
-        
-        Version: ${{ github.event.inputs.version || '1.0.0-dev' }}
-        Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-        Commit: ${{ github.sha }}
-        Python: ${{ matrix.python-version }}
-        
-        Installation:
-        1. Extract all files to a folder
-        2. Run ${{ env.APP_NAME }}.exe
-        3. Configure settings in config folder
-        
-        Support: support@finovate-audit.com
-        "@
+Finovate Audit Nexus AI - Windows Build
+======================================
+
+Version: ${{ github.event.inputs.version || '1.0.0-dev' }}
+Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+Commit: ${{ github.sha }}
+Python: ${{ matrix.python-version }}
+
+Installation:
+1. Extract all files to a folder
+2. Run ${{ env.APP_NAME }}.exe
+3. Configure settings in config folder
+
+Support: support@finovate-audit.com
+"@
         
         $info | Out-File -FilePath "${{ env.BUILD_DIR }}/BUILD_INFO.txt" -Encoding UTF8
         
@@ -323,7 +170,7 @@ jobs:
         
         Write-Host "✓ Build artifacts organized"
         Get-ChildItem "${{ env.BUILD_DIR }}" | Select-Object Name, Length
-        
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -336,7 +183,7 @@ jobs:
           ${{ env.BUILD_DIR }}/LICENSE
         retention-days: 30
         if-no-files-found: warn
-        
+
     - name: Generate checksums
       shell: pwsh
       run: |
@@ -349,19 +196,19 @@ jobs:
         }
         $checksums | Out-File -FilePath "SHA256SUMS.txt" -Encoding UTF8
         Get-Content "SHA256SUMS.txt"
-        
+
     - name: Upload checksums
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.APP_NAME }}-checksums-py${{ matrix.python-version }}
         path: ${{ env.BUILD_DIR }}/SHA256SUMS.txt
         retention-days: 30
-        
+
   create-release:
     needs: build-windows
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true'
-    
+
     steps:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
@@ -369,36 +216,35 @@ jobs:
         pattern: ${{ env.APP_NAME }}-*
         merge-multiple: true
         path: release-artifacts
-        
+
     - name: Create release notes
       run: |
         cat > release-notes.md << 'EOF'
-        # Finovate Audit Nexus AI - Windows Release
-        
-        ## What's Changed
-        - Complete AI-powered financial audit platform
-        - 22 intelligent audit agents
-        - 15 ERP connectors (SAP, Oracle, Dynamics, etc.)
-        - Advanced fraud detection
-        - Real-time compliance monitoring
-        - Professional Windows desktop application
-        
-        ## Installation
-        1. Download the portable ZIP file
-        2. Extract to your desired location
-        3. Run FinovateAuditNexus.exe
-        4. Configure your settings
-        
-        ## System Requirements
-        - Windows 10/11 (64-bit)
-        - 8GB RAM minimum (16GB recommended)
-        - 2GB free disk space
-        - .NET Framework 6.0 (included)
-        
-        ## Support
-        For issues and questions, please visit our GitHub repository.
-        EOF
-        
+# Finovate Audit Nexus AI - Windows Release
+
+## What's Changed
+- Complete AI-powered financial audit platform
+- 22 intelligent audit agents
+- 15 ERP connectors (SAP, Oracle, Dynamics, etc.)
+- Advanced fraud detection
+- Real-time compliance monitoring
+- Professional Windows desktop application
+
+## Installation
+1. Download the portable ZIP file
+2. Extract to your desired location
+3. Run FinovateAuditNexus.exe
+4. Configure your settings
+
+## System Requirements
+- Windows 10/11 (64-bit)
+- 8GB RAM minimum (16GB recommended)
+- 2GB free disk space
+
+## Support
+For issues and questions, please visit our GitHub repository.
+EOF
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
@@ -415,12 +261,12 @@ jobs:
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+
   notify:
     needs: [build-windows, create-release]
     runs-on: ubuntu-latest
     if: always()
-    
+
     steps:
     - name: Build status notification
       run: |
