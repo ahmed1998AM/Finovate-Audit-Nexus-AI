@@ -75,7 +75,14 @@ def _install_test_dependency_shims():
         sys.modules['authlib.integrations.requests_client'] = requests_client
 
 
-_install_test_dependency_shims()
+def _should_install_test_shims() -> bool:
+    """Allow disabling shims in strict environments via env var."""
+    import os
+    return os.getenv("FINOVATE_DISABLE_TEST_SHIMS", "0") != "1"
+
+
+if _should_install_test_shims():
+    _install_test_dependency_shims()
 
 # Add project paths
 from pathlib import Path
