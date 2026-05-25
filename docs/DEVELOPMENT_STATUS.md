@@ -213,3 +213,10 @@ Finovate – AHMED EG
 ---
 
 *آخر تحديث: 2025*
+
+
+## Test Shim Control
+
+- To run tests with lightweight fallback shims (default), use normal `pytest`.
+- To disable shims and enforce strict dependency behavior, set:
+  - `FINOVATE_DISABLE_TEST_SHIMS=1 pytest -q`
