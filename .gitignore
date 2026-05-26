@@ -1,18 +1,42 @@
-```
-# Logs and temp files
-*.log
-*.tmp
-*.swp
+```gitignore
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Environment
+# Test cache
+.pytest_cache/
+.coverage
+coverage/
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Environment files
 .env
 .env.local
 *.env.*
 
-# Editors
-.vscode/
-.idea/
+# OS generated files
+.DS_Store
+Thumbs.db
 
-# Original rules preserved
-*.log
+# Build outputs
+dist/
+build/
+target/
 ```
