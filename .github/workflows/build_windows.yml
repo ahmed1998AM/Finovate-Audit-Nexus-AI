@@ -2,23 +2,20 @@ name: Build Windows Executable
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master ]
     paths:
-      - 'src/**'
-      - 'requirements.txt'
+      - '**.py'
       - 'requirements-windows.txt'
       - 'pyproject.toml'
       - '.github/workflows/build_windows.yml'
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
     inputs:
       version:
         description: 'Version number (e.g., 1.0.0)'
         required: false
         default: '1.0.0'
-      release:
-        description: 'Create release'
+      create_release:
+        description: 'Create GitHub Release'
         required: false
         type: boolean
         default: false
@@ -26,270 +23,511 @@ on:
 env:
   PYTHON_VERSION: '3.11'
   APP_NAME: 'FinovateAuditNexus'
-  BUILD_DIR: 'build_windows'
+  BUILD_DIR: 'dist_output'
 
 jobs:
   build-windows:
     runs-on: windows-latest
-    timeout-minutes: 60
-
+    timeout-minutes: 90
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        fetch-depth: 1
 
-    - name: Setup Python 3.11
+    - name: Setup Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
         cache-dependency-path: 'requirements-windows.txt'
 
     - name: Upgrade pip and install build tools
-      run: |
-        python -m pip install --upgrade pip setuptools wheel
-        pip install pyinstaller==6.3.0
-        pip install pytest pytest-cov
-
-    - name: Install project dependencies
-      id: install_deps
-      run: |
-        Write-Host "Installing Windows-specific requirements..."
-        pip install --no-cache-dir -r requirements-windows.txt
-        
-        if (Test-Path "pyproject.toml") {
-          pip install -e .
-        }
-        
-        Write-Host "✓ Dependencies installed successfully"
-
-    - name: Verify installation
-      run: |
-        python -c "import fastapi; import pydantic; print('✓ Core packages installed')"
-        pip list | Select-String "fastapi|pydantic|langchain|PySide6"
-
-    - name: Run tests (optional)
-      run: |
-        if (Test-Path "tests/") {
-          pytest tests/ -v --tb=short || Write-Host "Tests completed with warnings"
-        } else {
-          Write-Host "No tests directory found, skipping tests"
-        }
-      continue-on-error: true
-
-    - name: Check icon file
       shell: pwsh
       run: |
-        if (Test-Path "src/assets/icon.ico") {
-          $size = (Get-Item "src/assets/icon.ico").Length
-          Write-Host "✓ Icon file exists ($size bytes)"
+        python -m pip install --upgrade pip setuptools wheel --quiet
+        pip install pyinstaller==6.3.0 --quiet
+        Write-Host "✅ Build tools installed successfully"
+
+    - name: Verify project structure
+      shell: pwsh
+      run: |
+        Write-Host "🔍 Verifying project structure..."
+        $errors = @()
+        
+        # Check required files
+        $files = @("main.py", "requirements-windows.txt")
+        foreach ($f in $files) {
+          if (-not (Test-Path $f)) {
+            $errors += "Missing file: $f"
+          }
+        }
+        
+        # Check required directories
+        $dirs = @("assets", "backend", "frontend", "agents", "connectors", "config", "database")
+        foreach ($d in $dirs) {
+          if (-not (Test-Path $d -PathType Container)) {
+            $errors += "Missing directory: $d"
+          }
+        }
+        
+        # Check icon file
+        if (Test-Path "assets/icon.ico") {
+          $iconSize = (Get-Item "assets/icon.ico").Length
+          Write-Host "✅ Icon file found (${iconSize} bytes)"
         } else {
-          Write-Error "Icon file not found!"
+          $errors += "Missing assets/icon.ico"
+        }
+        
+        if ($errors.Count -gt 0) {
+          Write-Error "❌ Structure validation failed:`n$($errors -join "`n")"
           exit 1
         }
+        
+        Write-Host "✅ Project structure validated successfully"
+        Write-Host ""
+        Write-Host "Project contents:"
+        Get-ChildItem -Directory | Select-Object Name, @{N="Size";E={(Get-ChildItem $_.FullName -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB}} | Format-Table
 
-    - name: Create PyInstaller spec file
+    - name: Install Windows dependencies
       shell: pwsh
       run: |
-        pyi-makespec --name=${{ env.APP_NAME }} `
-          --windowed `
-          --icon=src/assets/icon.ico `
-          --add-data "src/config;config" `
-          --add-data "src/templates;templates" `
-          --add-data "src/assets;assets" `
-          --hidden-import=PySide6 `
-          --hidden-import=numpy `
-          --hidden-import=pandas `
-          --hidden-import=sqlalchemy `
-          --hidden-import=fastapi `
-          --hidden-import=pydantic `
-          src/main.py
+        Write-Host "📦 Installing dependencies (this may take 10-20 minutes)..."
         
-        Write-Host "✓ Spec file created"
+        # Install from requirements
+        pip install --no-cache-dir -r requirements-windows.txt
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "❌ Failed to install dependencies"
+          exit 1
+        }
+        
+        # Verify critical imports
+        Write-Host "`n🔍 Verifying critical package imports..."
+        $testImports = @(
+          "import PySide6.QtWidgets",
+          "import fastapi",
+          "import numpy",
+          "import pandas",
+          "import sqlalchemy",
+          "import langchain"
+        )
+        
+        foreach ($import in $testImports) {
+          try {
+            python -c "$import" 2>$null
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "  ✅ $import"
+            } else {
+              throw "Import failed"
+            }
+          } catch {
+            Write-Warning "  ⚠️ $import - Failed"
+          }
+        }
+        
+        Write-Host "`n✅ Dependencies installed and verified"
+
+    - name: Create optimized PyInstaller spec
+      shell: pwsh
+      run: |
+        $absolutePath = Convert-Path "assets/icon.ico"
+        Write-Host "Using icon at: $absolutePath"
+        
+        $specContent = @"
+# -*- mode: python ; coding: utf-8 -*-
+# Auto-generated by Finovate Audit Nexus AI Build System
+
+block_cipher = None
+
+a = Analysis(
+    ['main.py'],
+    pathex=[],
+    binaries=[],
+    datas=[
+      ('config', 'config'),
+      ('assets', 'assets'),
+      ('templates', 'templates'),
+      ('backend', 'backend'),
+      ('frontend', 'frontend'),
+      ('agents', 'agents'),
+      ('connectors', 'connectors'),
+      ('database', 'database'),
+    ],
+    hiddenimports=[
+      # PySide6
+      'PySide6.QtCore',
+      'PySide6.QtGui',
+      'PySide6.QtWidgets',
+      'PySide6.QtPrintSupport',
+      'PySide6.QtSvg',
+      'PySide6.QtNetwork',
+      
+      # NumPy
+      'numpy.core._methods',
+      'numpy.core._dtype_ctypes',
+      'numpy.random._common',
+      'numpy.random.bit_generator',
+      
+      # Pandas
+      'pandas.core.arrays',
+      'pandas.core.internals',
+      'pandas.core.tools',
+      'pandas.io.common',
+      
+      # SQLAlchemy
+      'sqlalchemy.dialects.sqlite',
+      'sqlalchemy.dialects.postgresql',
+      'sqlalchemy.sql.default_comparator',
+      
+      # FastAPI & Pydantic
+      'fastapi.routing',
+      'fastapi.middleware',
+      'pydantic.main',
+      'pydantic.fields',
+      
+      # HTTP & Async
+      'httpcore',
+      'httpcore._async',
+      'httpcore._sync',
+      'httpx',
+      'anyio',
+      'sniffio',
+      
+      # Jinja2
+      'jinja2.ext',
+      'jinja2.loaders',
+      
+      # Logging
+      'loguru',
+      'logging.config',
+      
+      # Plotting & Reports
+      'plotly',
+      'plotly.graph_objects',
+      'reportlab',
+      'reportlab.lib',
+      'reportlab.pdfgen',
+      
+      # Utilities
+      'uvicorn',
+      'uvicorn.loops',
+      'multiprocessing.spawn',
+    ],
+    collect_submodules=[
+      'langchain',
+      'langchain_community',
+      'langchain_core',
+      'crewai',
+      'transformers',
+    ],
+    collect_data_files=[
+      ('langchain', 'langchain'),
+      ('langchain_community', 'langchain_community'),
+      ('crewai', 'crewai'),
+    ],
+    imports_not_found_level='WARNING',
+    runtime_hooks=[],
+    excludes=[
+      'matplotlib',
+      'scipy',
+      'tkinter',
+      'IPython',
+      'jupyter',
+      'notebook',
+      'nbconvert',
+      'pytest',
+      'coverage',
+    ],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    exclude_binaries=True,
+    name='${{ env.APP_NAME }}',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=r'$absolutePath',
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='${{ env.APP_NAME }}',
+)
+"@
+        $specContent | Out-File -FilePath "${{ env.APP_NAME }}.spec" -Encoding UTF8 -NoNewline
+        Write-Host "✅ PyInstaller spec file created: ${{ env.APP_NAME }}.spec"
+        Write-Host ""
+        Write-Host "Spec file preview:"
+        Get-Content "${{ env.APP_NAME }}.spec" | Select-Object -First 20
 
     - name: Build executable with PyInstaller
       shell: pwsh
       run: |
-        # Modify spec file to include all necessary data files
-        $specContent = Get-Content "${{ env.APP_NAME }}.spec" -Raw
+        Write-Host "🚀 Starting PyInstaller build process..."
+        Write-Host "⏱️  This may take 30-50 minutes depending on system performance"
+        Write-Host ""
         
-        # Add additional hidden imports
-        $additionalImports = @"
-        hiddenimports += ['PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets']
-        hiddenimports += ['numpy.core._methods', 'numpy.lib.format']
-        hiddenimports += ['pandas.core.arrays', 'pandas.io.formats']
-        hiddenimports += ['sqlalchemy.dialects.sqlite']
-        hiddenimports += ['fastapi.routing', 'pydantic.main']
-"@
+        # Clean previous builds
+        if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
+        if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
         
-        $specContent = $specContent -replace "hiddenimports=\\[", "hiddenimports=[`n$additionalImports,"
+        # Run PyInstaller with verbose logging
+        $env:PYINSTALLER_DEBUG = "1"
+        pyinstaller --clean --log-level=INFO "${{ env.APP_NAME }}.spec"
         
-        # Save modified spec
-        $specContent | Out-File -FilePath "${{ env.APP_NAME }}.spec" -Encoding UTF8
+        $buildExitCode = $LASTEXITCODE
         
-        # Build with verbose output
-        Write-Host "Starting PyInstaller build..."
-        pyinstaller --clean --log-level=INFO ${{ env.APP_NAME }}.spec
+        if ($buildExitCode -ne 0) {
+          Write-Error "❌ PyInstaller build failed with exit code $buildExitCode"
+          
+          # Show last 50 lines of log if available
+          if (Test-Path "build/${{ env.APP_NAME }}/warn-${{ env.APP_NAME }}.txt") {
+            Write-Host "`n⚠️ Build warnings/errors:"
+            Get-Content "build/${{ env.APP_NAME }}/warn-${{ env.APP_NAME }}.txt" | Select-Object -Last 50
+          }
+          
+          exit 1
+        }
         
-        # Verify build
-        if (Test-Path "dist/${{ env.APP_NAME }}/${{ env.APP_NAME }}.exe") {
-          Write-Host "✓ PyInstaller build successful"
-          Get-Item "dist/${{ env.APP_NAME }}/${{ env.APP_NAME }}.exe" | Select-Object Name, Length
+        # Verify output
+        $exePath = "dist/${{ env.APP_NAME }}/${{ env.APP_NAME }}.exe"
+        if (Test-Path $exePath) {
+          $size = (Get-Item $exePath).Length
+          $sizeMB = [math]::Round($size / 1MB, 2)
+          Write-Host ""
+          Write-Host "✅ Build completed successfully!"
+          Write-Host "   Executable: $exePath"
+          Write-Host "   Size: ${sizeMB} MB"
+          
+          # List all build outputs
+          Write-Host "`n📦 Build outputs:"
+          Get-ChildItem "dist/${{ env.APP_NAME }}" | ForEach-Object {
+            $itemSize = if ($_.PSIsContainer) { 
+              "{0:N2}" -f ((Get-ChildItem $_.FullName -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB)
+            } else { 
+              "{0:N2}" -f ($_.Length / 1MB)
+            }
+            Write-Host "   • $($_.Name) (${itemSize} MB)"
+          }
         } else {
-          Write-Error "Build failed - executable not found"
-          Get-ChildItem dist -Recurse | Select-Object FullName
+          Write-Error "❌ Executable not found at expected location: $exePath"
+          Write-Host "`nAvailable files in dist:"
+          Get-ChildItem "dist" -Recurse | Select-Object FullName
           exit 1
         }
 
-    - name: Organize build artifacts
+    - name: Prepare distribution package
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Force -Path "${{ env.BUILD_DIR }}"
+        $buildDir = "${{ env.BUILD_DIR }}"
+        $sourceDir = "dist/${{ env.APP_NAME }}"
         
-        # Copy executable
-        if (Test-Path "dist/${{ env.APP_NAME }}/${{ env.APP_NAME }}.exe") {
-          Copy-Item "dist/${{ env.APP_NAME }}/*" -Destination "${{ env.BUILD_DIR }}/" -Recurse -Force
-          Write-Host "✓ Executable copied"
+        # Create build directory
+        New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
+        
+        # Copy all build artifacts
+        Copy-Item -Path "$sourceDir/*" -Destination $buildDir -Recurse -Force
+        
+        # Copy documentation
+        $docs = @("README.md", "LICENSE", "CHANGELOG.md")
+        foreach ($doc in $docs) {
+          if (Test-Path $doc) {
+            Copy-Item -Path $doc -Destination $buildDir -ErrorAction SilentlyContinue
+          }
         }
         
-        # Add documentation
-        Copy-Item "README.md" -Destination "${{ env.BUILD_DIR }}/" -Force -ErrorAction SilentlyContinue
-        Copy-Item "LICENSE" -Destination "${{ env.BUILD_DIR }}/" -Force -ErrorAction SilentlyContinue
-        Copy-Item "CHANGELOG.md" -Destination "${{ env.BUILD_DIR }}/" -Force -ErrorAction SilentlyContinue
-        
         # Create build info
-        $info = @"
+        $version = "${{ github.event.inputs.version }}"
+        if ([string]::IsNullOrEmpty($version)) { 
+          $version = "1.0.0-dev-$(${{ github.sha }}.Substring(0,7))" 
+        }
+        
+        $buildInfo = @"
 Finovate Audit Nexus AI - Windows Build
-======================================
+========================================
+Version: $version
+Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+Commit SHA: ${{ github.sha }}
+Branch: ${{ github.ref_name }}
+Build ID: ${{ github.run_id }}
 
-Version: ${{ github.event.inputs.version || '1.0.0-dev' }}
-Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-Commit: ${{ github.sha }}
-Python: 3.11
+System Requirements:
+- Windows 10/11 (64-bit)
+- 8 GB RAM minimum (16 GB recommended)
+- 2 GB free disk space
+- .NET Framework 4.8 (included)
 
-Installation:
+Installation Instructions:
 1. Extract all files to a folder
-2. Run ${{ env.APP_NAME }}.exe
-3. Configure settings in config folder
+2. Run FinovateAuditNexus.exe
+3. Configure settings in config/settings.json
+4. Launch the application
 
-Support: support@finovate-audit.com
+Support: https://github.com/${{ github.repository }}/issues
+
+© 2025 Finovate – AHMED EG. All Rights Reserved.
 "@
+        $buildInfo | Out-File -FilePath "$buildDir/BUILD_INFO.txt" -Encoding UTF8
         
-        $info | Out-File -FilePath "${{ env.BUILD_DIR }}/BUILD_INFO.txt" -Encoding UTF8
+        # Create portable ZIP
+        $zipName = "${{ env.APP_NAME }}_portable.zip"
+        Compress-Archive -Path "$buildDir/*" -DestinationPath "$buildDir/$zipName" -Force
         
-        # Create portable zip
-        Compress-Archive -Path "${{ env.BUILD_DIR }}/*" -DestinationPath "${{ env.BUILD_DIR }}/${{ env.APP_NAME }}_portable.zip" -Force
-        
-        Write-Host "✓ Build artifacts organized"
-        Get-ChildItem "${{ env.BUILD_DIR }}" | Select-Object Name, Length
+        # Show results
+        Write-Host "✓ Distribution package created"
+        Write-Host ""
+        Write-Host "Build artifacts:"
+        Get-ChildItem -Path $buildDir -File | ForEach-Object {
+          $sizeMB = [math]::Round($_.Length / 1MB, 2)
+          Write-Host "  • $($_.Name) (${sizeMB} MB)"
+        }
 
-    - name: Upload build artifacts
+    - name: Upload executable artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.APP_NAME }}-windows-py311
+        name: ${{ env.APP_NAME }}-windows-exe
+        path: ${{ env.BUILD_DIR }}/${{ env.APP_NAME }}.exe
+        retention-days: 30
+        compression-level: 6
+
+    - name: Upload portable ZIP artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.APP_NAME }}-windows-portable
+        path: ${{ env.BUILD_DIR }}/${{ env.APP_NAME }}_portable.zip
+        retention-days: 30
+        compression-level: 6
+
+    - name: Upload build documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.APP_NAME }}-build-docs
         path: |
-          ${{ env.BUILD_DIR }}/${{ env.APP_NAME }}.exe
-          ${{ env.BUILD_DIR }}/${{ env.APP_NAME }}_portable.zip
           ${{ env.BUILD_DIR }}/BUILD_INFO.txt
           ${{ env.BUILD_DIR }}/README.md
           ${{ env.BUILD_DIR }}/LICENSE
+          ${{ env.BUILD_DIR }}/CHANGELOG.md
         retention-days: 30
-        if-no-files-found: warn
 
-    - name: Generate checksums
+    - name: Generate SHA256 checksums
       shell: pwsh
       run: |
-        Set-Location "${{ env.BUILD_DIR }}"
-        $files = Get-ChildItem -File
+        Set-Location ${{ env.BUILD_DIR }}
+        
         $checksums = @()
-        foreach ($file in $files) {
-          $hash = Get-FileHash $file.Name -Algorithm SHA256
-          $checksums += "$($hash.Hash) *$($file.Name)"
+        Get-ChildItem -File | ForEach-Object {
+          $hash = Get-FileHash $_.Name -Algorithm SHA256
+          $checksums += "$($hash.Hash) *$($_.Name)"
         }
+        
         $checksums | Out-File -FilePath "SHA256SUMS.txt" -Encoding UTF8
-        Get-Content "SHA256SUMS.txt"
+        Write-Host "✓ Checksums generated:"
+        Get-Content SHA256SUMS.txt
 
     - name: Upload checksums
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ env.APP_NAME }}-checksums-py311
+        name: ${{ env.APP_NAME }}-checksums
         path: ${{ env.BUILD_DIR }}/SHA256SUMS.txt
         retention-days: 30
 
   create-release:
     needs: build-windows
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true'
-
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true'
+    
     steps:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         pattern: ${{ env.APP_NAME }}-*
         merge-multiple: true
-        path: release-artifacts
+        path: release-assets
 
-    - name: Create release notes
+    - name: Display artifact contents
+      shell: bash
       run: |
-        cat > release-notes.md << 'EOF'
-# Finovate Audit Nexus AI - Windows Release
-
-## What's Changed
-- Complete AI-powered financial audit platform
-- 22 intelligent audit agents
-- 15 ERP connectors (SAP, Oracle, Dynamics, etc.)
-- Advanced fraud detection
-- Real-time compliance monitoring
-- Professional Windows desktop application
-
-## Installation
-1. Download the portable ZIP file
-2. Extract to your desired location
-3. Run FinovateAuditNexus.exe
-4. Configure your settings
-
-## System Requirements
-- Windows 10/11 (64-bit)
-- 8GB RAM minimum (16GB recommended)
-- 2GB free disk space
-
-## Support
-For issues and questions, please visit our GitHub repository.
-EOF
+        echo "Downloaded artifacts:"
+        ls -lh release-assets/
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ github.event.inputs.version || '1.0.0' }}
         name: Finovate Audit Nexus AI v${{ github.event.inputs.version || '1.0.0' }}
-        body_path: release-notes.md
         draft: false
-        prerelease: ${{ contains(github.event.inputs.version, 'beta') || contains(github.event.inputs.version, 'alpha') }}
-        files: |
-          release-artifacts/*.exe
-          release-artifacts/*.zip
-          release-artifacts/*.txt
-          release-artifacts/*.md
+        prerelease: ${{ github.ref != 'refs/heads/main' }}
         generate_release_notes: true
+        body: |
+          ## 🚀 Finovate Audit Nexus AI - Windows Release
+
+          ### ✨ What's New
+          - Complete AI-powered financial audit platform
+          - 22 specialized AI agents for comprehensive auditing
+          - 15+ enterprise ERP connectors (SAP, Oracle, Dynamics, etc.)
+          - Advanced fraud detection capabilities
+          - Real-time compliance monitoring
+          - Professional desktop interface
+
+          ### 📦 Installation
+          1. Download `${{ env.APP_NAME }}_portable.zip`
+          2. Extract to your preferred location
+          3. Run `${{ env.APP_NAME }}.exe`
+          4. Configure API keys in `config/settings.json`
+
+          ### 🔧 System Requirements
+          - **OS**: Windows 10/11 (64-bit)
+          - **RAM**: 8 GB minimum, 16 GB recommended
+          - **Storage**: 2 GB free space
+          - **.NET**: Framework 4.8 (auto-installed)
+
+          ### 📚 Documentation
+          - [User Guide](https://github.com/${{ github.repository }}/blob/main/README.md)
+          - [API Documentation](https://github.com/${{ github.repository }}/wiki/API)
+          - [Troubleshooting](https://github.com/${{ github.repository }}/wiki/Troubleshooting)
+
+          ### 🔐 Security
+          All downloads include SHA256 checksums for verification.
+          Verify using: `sha256sum -c SHA256SUMS.txt`
+
+          ### 📝 Changelog
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed changes.
+
+          ---
+          **Developed by**: Ahmed Mostafa Ibrahim  
+          **Brand**: Finovate – AHMED EG  
+          **License**: MIT
+        files: |
+          release-assets/*.exe
+          release-assets/*.zip
+          release-assets/*.txt
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  notify:
-    needs: [build-windows, create-release]
-    runs-on: ubuntu-latest
-    if: always()
-
-    steps:
-    - name: Build status notification
-      run: |
-        if [ "${{ needs.build-windows.result }}" == "success" ]; then
-          echo "✅ Windows build completed successfully!"
-          echo "📦 Artifacts are available for download"
-          if [ "${{ github.event.inputs.release }}" == "true" ]; then
-            echo "🚀 Release created on GitHub"
-          fi
-        else
-          echo "❌ Windows build failed. Please check the logs."
-          exit 1
-        fi
