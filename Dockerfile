@@ -1,4 +1,5 @@
 # Finovate Audit Nexus AI - Dockerfile
+# Optimized for Production and GitHub Actions
 
 # Build stage
 FROM python:3.11-slim as builder
@@ -10,15 +11,17 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     libpq-dev \
+    tesseract-ocr \
+    libtesseract-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Python dependencies
+# Upgrade pip and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
 # Runtime stage
@@ -29,6 +32,7 @@ WORKDIR /app
 # Install runtime system dependencies
 RUN apt-get update && apt-get install -y \
     libpq5 \
+    tesseract-ocr \
     curl \
     && rm -rf /var/lib/apt/lists/* \
     && addgroup --system appgroup \
@@ -41,10 +45,12 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy application code
 COPY --chown=appuser:appgroup . .
 
-# Set permissions
-RUN chmod +x main.py && \
-    mkdir -p /app/logs /app/data && \
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/uploads /app/exports && \
     chown -R appuser:appgroup /app
+
+# Set permissions
+RUN chmod +x main.py run_app.py 2>/dev/null || true
 
 # Switch to non-root user
 USER appuser

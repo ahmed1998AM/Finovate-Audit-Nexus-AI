@@ -1,0 +1,16 @@
+include README.md
+include LICENSE
+include requirements.txt
+include pyproject.toml
+include setup.py
+include .env.example
+recursive-include agents *.py
+recursive-include backend *.py
+recursive-include connectors *.py
+recursive-include frontend *.py
+recursive-include database *.py
+recursive-include config *.json
+recursive-include templates *.html
+recursive-include tests *.py
+exclude tests/__pycache__/*
+exclude */__pycache__/*
