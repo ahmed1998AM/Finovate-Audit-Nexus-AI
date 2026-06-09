@@ -35,6 +35,9 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1400, 900)
         self.resize(1600, 1000)
         
+        # ضبط الأيقونة
+        self._set_app_icon()
+        
         # تهيئة المكونات
         self._setup_ui()
         self._setup_toolbar()
@@ -77,27 +80,59 @@ class MainWindow(QMainWindow):
         # إنشاء الصفحات
         self._create_pages()
         
+    def _set_app_icon(self):
+        """تحميل وضبط أيقونة التطبيق"""
+        import os
+        import sys
+        
+        def get_resource_path(relative_path):
+            """الحصول على المسار الصحيح للموارد سواء في التطوير أو بعد التجميع"""
+            if hasattr(sys, '_MEIPASS'):
+                return os.path.join(sys._MEIPASS, relative_path)
+            return os.path.join(os.path.abspath("."), relative_path)
+
+        icon_paths = [
+            get_resource_path("assets/icon.ico"),
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "icon.ico"),
+            "assets/icon.ico"
+        ]
+        
+        for path in icon_paths:
+            if os.path.exists(path):
+                self.setWindowIcon(QIcon(path))
+                break
+
     def _create_pages(self):
         """إنشاء صفحات التطبيق"""
-        # 1. لوحة التحكم الرئيسية
-        self.dashboard_page = MainDashboard()
-        self.stack.addWidget(self.dashboard_page)
-        
-        # 2. لوحة التحليلات
-        self.analytics_page = AnalyticsDashboard()
-        self.stack.addWidget(self.analytics_page)
-        
-        # 3. إدارة الوكلاء
-        self.agents_page = AgentManagerWidget()
-        self.stack.addWidget(self.agents_page)
-        
-        # 4. عرض التقارير
-        self.reports_page = ReportViewerWidget()
-        self.stack.addWidget(self.reports_page)
-        
-        # 5. إدارة مزودي الذكاء الاصطناعي
-        self.ai_management_page = AIProviderManager()
-        self.stack.addWidget(self.ai_management_page)
+        try:
+            # 1. لوحة التحكم الرئيسية
+            self.dashboard_page = MainDashboard()
+            self.stack.addWidget(self.dashboard_page)
+            
+            # 2. لوحة التحليلات
+            self.analytics_page = AnalyticsDashboard()
+            self.stack.addWidget(self.analytics_page)
+            
+            # 3. إدارة الوكلاء
+            self.agents_page = AgentManagerWidget()
+            self.stack.addWidget(self.agents_page)
+            
+            # 4. عرض التقارير
+            self.reports_page = ReportViewerWidget()
+            self.stack.addWidget(self.reports_page)
+            
+            # 5. إدارة مزودي الذكاء الاصطناعي
+            self.ai_management_page = AIProviderManager()
+            self.stack.addWidget(self.ai_management_page)
+        except Exception as e:
+            print(f"Error creating pages: {e}")
+            error_widget = QWidget()
+            error_layout = QVBoxLayout(error_widget)
+            error_label = QLabel(f"❌ خطأ في تحميل مكونات الواجهة:\n{e}")
+            error_label.setStyleSheet("color: red; font-size: 18px;")
+            error_label.setAlignment(Qt.AlignCenter)
+            error_layout.addWidget(error_label)
+            self.stack.addWidget(error_widget)
         
         # 6. صفحة الإعدادات (ستُفتح كنافذة منبثقة)
         

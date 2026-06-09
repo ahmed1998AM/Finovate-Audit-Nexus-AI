@@ -66,22 +66,9 @@ echo [OK] Distribution directory ready
 echo.
 
 REM Build executable with PyInstaller
-echo [INFO] Building executable with PyInstaller...
+echo [INFO] Building executable with PyInstaller using optimized spec file...
 pip install pyinstaller --quiet
-pyinstaller --name="FinovateAudit" ^
-    --windowed ^
-    --onefile ^
-    --icon=frontend/assets/icon.ico ^
-    --add-data "frontend;frontend" ^
-    --add-data "database;database" ^
-    --add-data "agents;agents" ^
-    --add-data "backend;backend" ^
-    --add-data "connectors;connectors" ^
-    --hidden-import=tinydb ^
-    --hidden-import=pandas ^
-    --hidden-import=numpy ^
-    --hidden-import=matplotlib ^
-    main.py
+pyinstaller --clean finovate_audit.spec
 
 if errorlevel 1 (
     echo [ERROR] Build failed
