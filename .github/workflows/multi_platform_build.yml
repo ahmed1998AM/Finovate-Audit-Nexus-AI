@@ -23,15 +23,12 @@ jobs:
           - os: ubuntu-latest
             artifact_name: FinovateAudit-Linux
             asset_name: FinovateAudit-Linux
-            script: scripts/build_linux.sh
           - os: windows-latest
             artifact_name: FinovateAudit-Windows
-            asset_name: FinovateAudit-Windows.exe
-            script: scripts/build_windows.bat
+            asset_name: FinovateAudit.exe
           - os: macos-latest
             artifact_name: FinovateAudit-macOS
-            asset_name: FinovateAudit-macOS.app
-            script: scripts/build_macos.sh
+            asset_name: FinovateAudit.app
 
     steps:
       - name: Checkout code
@@ -47,7 +44,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libpq-dev tesseract-ocr libgl1-mesa-glx
+          sudo apt-get install -y libpq-dev tesseract-ocr libgl1-mesa-glx libegl1-mesa libdbus-1-3 libxkbcommon-x11-0
 
       - name: Install dependencies
         run: |
@@ -58,20 +55,20 @@ jobs:
       - name: Build Executable (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          pyinstaller --name="FinovateAudit" --windowed --onefile --add-data "frontend;frontend" --add-data "database;database" --add-data "agents;agents" --add-data "backend;backend" --add-data "connectors;connectors" --hidden-import=tinydb --hidden-import=pandas --hidden-import=numpy --hidden-import=matplotlib main.py
+          pyinstaller --clean finovate_audit.spec
         shell: cmd
 
       - name: Build Executable (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          chmod +x scripts/build_linux.sh
-          pyinstaller --name="FinovateAudit" --windowed --onefile --add-data "frontend:frontend" --add-data "database:database" --add-data "agents:agents" --add-data "backend:backend" --add-data "connectors:connectors" --hidden-import=tinydb --hidden-import=pandas --hidden-import=numpy --hidden-import=matplotlib main.py
+          # Use the spec file but adjust for Linux path separators if necessary
+          # PyInstaller spec files are usually cross-platform for data paths
+          pyinstaller --clean finovate_audit.spec
 
       - name: Build Executable (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          chmod +x scripts/build_macos.sh
-          pyinstaller --name="FinovateAudit" --windowed --onefile --add-data "frontend:frontend" --add-data "database:database" --add-data "agents:agents" --add-data "backend:backend" --add-data "connectors:connectors" --hidden-import=tinydb --hidden-import=pandas --hidden-import=numpy --hidden-import=matplotlib main.py
+          pyinstaller --clean finovate_audit.spec
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
