@@ -5,39 +5,27 @@ All notable changes to Finovate Audit Nexus AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.1] - 2026-06-10
 
+### ✨ ميزات وتحسينات جديدة (New Features & Improvements)
+- **الأيقونة الاحترافية**: إضافة هوية بصرية جديدة للبرنامج بصيغة `.ico` و `.png`.
+- **دعم البناء المتعدد (Multi-Platform Build)**: تجهيز GitHub Actions لبناء نسخ Windows, Linux, macOS.
+- **إصلاحات ويندوز (Windows Fixes)**: الانتقال إلى `--onedir` لتجنب اعتبار البرنامج كفيروس وضمان ظهور الواجهة.
+- **إصلاحات لينكس (Linux Fixes)**: إضافة مكتبات Mesa و OpenGL المفقودة لضمان نجاح البناء.
+- **تهيئة قاعدة البيانات**: إضافة سكربت `init_db.py` لإنشاء الجداول تلقائياً.
+- **تحسين الكود**: إضافة ملفات `__init__.py` المفقودة وتنظيم هيكل المشروع.
+
+### Fixed
+- Fixed Windows executable running in background only.
+- Fixed Linux build failure on GitHub Actions due to missing graphics libraries.
+- Fixed missing application icon in the taskbar.
+- Fixed database initialization issues.
+
+## [1.0.0] - 2025-05-25
 ### Added
 - Initial release of Finovate Audit Nexus AI
 - 22 AI-powered audit agents
 - 15 ERP connectors (SAP, Oracle, Dynamics, Odoo, etc.)
-- Complete frontend dashboard with React-like components
-- Advanced fraud detection capabilities
-- OCR and document intelligence
-- Compliance engine for international standards
-- Risk scoring and behavioral intelligence
-- Explainable AI features
-- Continuous audit monitoring
-- Financial graph intelligence
-- AI copilot assistance
-
-### Changed
-- N/A
-
-### Deprecated
-- N/A
-
-### Removed
-- N/A
-
-### Fixed
-- N/A
-
-### Security
-- Implemented comprehensive security manager
-- Role-based access control
-- Encrypted data storage
-- Secure API authentication
 
 ---
 
