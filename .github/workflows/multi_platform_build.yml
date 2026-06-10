@@ -44,7 +44,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libpq-dev tesseract-ocr libgl1-mesa-glx libegl1-mesa libdbus-1-3 libxkbcommon-x11-0
+          sudo apt-get install -y libpq-dev tesseract-ocr libgl1-mesa-dri mesa-utils libegl1-mesa-drivers libdbus-1-3 libxkbcommon-x11-0
 
       - name: Install dependencies
         run: |
@@ -55,7 +55,7 @@ jobs:
       - name: Build Executable (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          pyinstaller --clean finovate_audit.spec
+          pyinstaller --clean --onedir finovate_audit.spec
         shell: cmd
 
       - name: Build Executable (Linux)
@@ -63,12 +63,12 @@ jobs:
         run: |
           # Use the spec file but adjust for Linux path separators if necessary
           # PyInstaller spec files are usually cross-platform for data paths
-          pyinstaller --clean finovate_audit.spec
+          pyinstaller --clean --onedir finovate_audit.spec
 
       - name: Build Executable (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          pyinstaller --clean finovate_audit.spec
+          pyinstaller --clean --onedir finovate_audit.spec
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
