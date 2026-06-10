@@ -56,6 +56,10 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
+    # Using --onedir for better compatibility and reduced false positives from antivirus.
+    # If a single file executable is desired, change this to True and ensure the build scripts
+    # or workflows use the --onefile flag with pyinstaller, and remove the --onedir flag.
+
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

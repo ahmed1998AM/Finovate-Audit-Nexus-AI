@@ -44,8 +44,8 @@ def main():
             print(f"❌ Unknown command: {command}")
             sys.exit(1)
     else:
-        # Default: Show help
-        print("💡 Use --help for available commands")
+        # Default: Start desktop application
+        start_desktop_app()
 
 def start_api_server():
     """تشغيل خادم API"""
