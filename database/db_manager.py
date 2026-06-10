@@ -10,9 +10,19 @@ from database.models.schema import Base, Engagement, Finding, FinancialData, Ano
 class DatabaseManager:
     def __init__(self, db_url: str = None):
         if not db_url:
-            db_url = os.getenv("DATABASE_URL", "sqlite:///./audit_nexus.db")
+            # Use a local directory for the desktop app
+            app_data_dir = os.path.join(os.path.expanduser("~"), ".finovate_audit")
+            if not os.path.exists(app_data_dir):
+                os.makedirs(app_data_dir)
+            db_path = os.path.join(app_data_dir, "audit_nexus.db")
+            db_url = os.getenv("DATABASE_URL", f"sqlite:///{db_path}")
         
-        self.engine = create_engine(db_url)
+        # Use connection pooling for better performance
+        self.engine = create_engine(
+            db_url, 
+            connect_args={"check_same_thread": False} if "sqlite" in db_url else {},
+            pool_pre_ping=True
+        )
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         
     def create_tables(self):

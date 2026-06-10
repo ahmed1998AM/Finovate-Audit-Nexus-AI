@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QAction, QIcon, QFont
 
 from .dashboard.main_dashboard import MainDashboard
+from .dashboard.web_view_page import WebViewDashboard
 from .analytics.dashboard import AnalyticsDashboard
 from .agents.agent_manager import AgentManagerWidget
 from .reports.report_viewer import ReportViewerWidget
@@ -109,6 +110,10 @@ class MainWindow(QMainWindow):
             self.dashboard_page = MainDashboard()
             self.stack.addWidget(self.dashboard_page)
             
+            # 1.1 لوحة الويب الذكية
+            self.web_dashboard_page = WebViewDashboard()
+            self.stack.addWidget(self.web_dashboard_page)
+            
             # 2. لوحة التحليلات
             self.analytics_page = AnalyticsDashboard()
             self.stack.addWidget(self.analytics_page)
@@ -202,10 +207,11 @@ class MainWindow(QMainWindow):
         """الانتقال إلى صفحة محددة"""
         page_map = {
             "dashboard": 0,
-            "analytics": 1,
-            "agents": 2,
-            "reports": 3,
-            "ai_management": 4,
+            "web_dashboard": 1,
+            "analytics": 2,
+            "agents": 3,
+            "reports": 4,
+            "ai_management": 5,
         }
         
         if page_name in page_map:
