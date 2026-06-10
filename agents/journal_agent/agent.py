@@ -34,12 +34,12 @@ class JournalEntryAuditAgent:
         
         logger.info(f"{self.agent_name} initialized with ID: {agent_id}")
     
-    async def analyze_journal_entries(self, entries: pd.DataFrame) -> Dict[str, Any]:
+    async def analyze_journal_entries(self, entries: Any) -> Dict[str, Any]:
         """
         تحليل قيود اليومية
         
         Args:
-            entries: DataFrame يحتوي على قيود اليومية
+            entries: البيانات المدخلة (يمكن أن تكون DataFrame أو List of Dicts)
             
         Returns:
             dict: نتائج التحليل
@@ -47,9 +47,22 @@ class JournalEntryAuditAgent:
         logger.info("Starting journal entry analysis...")
         self.status = "analyzing"
         
+        # تحويل البيانات إلى DataFrame إذا لزم الأمر
+        if isinstance(entries, list):
+            df = pd.DataFrame(entries)
+        elif isinstance(entries, pd.DataFrame):
+            df = entries
+        else:
+            logger.warning("Invalid data format for journal entries. Expected list or DataFrame.")
+            return {"status": "error", "error": "Invalid data format"}
+
+        if df.empty:
+            logger.warning("No journal entries provided for analysis.")
+            return {"status": "empty", "total_entries": 0, "risk_score": 0}
+
         results = {
             "analysis_timestamp": datetime.now().isoformat(),
-            "total_entries": len(entries),
+            "total_entries": len(df),
             "duplicate_entries": [],
             "suspicious_entries": [],
             "timing_anomalies": [],
@@ -61,27 +74,27 @@ class JournalEntryAuditAgent:
         
         try:
             # كشف القيود المكررة
-            results["duplicate_entries"] = await self._detect_duplicates(entries)
+            results["duplicate_entries"] = await self._detect_duplicates(df)
             
             # كشف القيود غير الطبيعية
-            results["suspicious_entries"] = await self._detect_suspicious_entries(entries)
+            results["suspicious_entries"] = await self._detect_suspicious_entries(df)
             
             # تحليل توقيت القيود
-            results["timing_anomalies"] = await self._analyze_timing(entries)
+            results["timing_anomalies"] = await self._analyze_timing(df)
             
             # تحليل المستخدمين
-            results["user_anomalies"] = await self._analyze_users(entries)
+            results["user_anomalies"] = await self._analyze_users(df)
             
             # كشف المبالغ المستديرة
-            results["round_amount_entries"] = await self._detect_round_amounts(entries)
+            results["round_amount_entries"] = await self._detect_round_amounts(df)
             
             # كشف القيود اليدوية
-            results["manual_entries"] = await self._identify_manual_entries(entries)
+            results["manual_entries"] = await self._identify_manual_entries(df)
             
             # حساب درجة المخاطر
             results["risk_score"] = self._calculate_risk_score(results)
             
-            self.entries_processed = len(entries)
+            self.entries_processed = len(df)
             self.status = "completed"
             logger.info(f"Journal entry analysis completed. Risk Score: {results['risk_score']}")
             

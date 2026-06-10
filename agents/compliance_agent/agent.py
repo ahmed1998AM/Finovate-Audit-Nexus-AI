@@ -111,6 +111,10 @@ class ComplianceStandardsAgent:
             }
         }
         
+    async def check_compliance(self, financial_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Alias for analyze_compliance for orchestrator compatibility"""
+        return self.analyze_compliance(financial_data)
+
     def analyze_compliance(self, financial_data: Dict[str, Any]) -> Dict[str, Any]:
         """تحليل الالتزام بالمعايير"""
         
@@ -126,6 +130,9 @@ class ComplianceStandardsAgent:
             'risk_level': 'LOW'
         }
         
+        if not financial_data:
+            return report
+
         total_checks = 0
         passed_checks = 0
         

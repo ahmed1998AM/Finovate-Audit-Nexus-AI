@@ -5,13 +5,16 @@ Enterprise-grade security layer with encryption, authentication,
 authorization, and audit logging.
 """
 
-import hashlib
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 import secrets
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.backends import default_backend
 import base64
 import os
 from loguru import logger
@@ -35,8 +38,21 @@ class SecurityManager:
         
         # Generate or use provided encryption key
         if encryption_key:
-            self.key = self._derive_key(encryption_key)
+            # If an encryption_key (passphrase) is provided, derive the Fernet key from it
+            # The salt for this KDF should be consistent for the application or stored securely.
+            # For now, we\'ll use a fixed salt for derivation, but in production, this needs careful management.
+            kdf_salt = os.getenv("KDF_SALT", "finovate_kdf_salt").encode()
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32, # 32 bytes for a 256-bit key
+                salt=kdf_salt,
+                iterations=480000, # Recommended iterations for PBKDF2
+                backend=default_backend()
+            )
+            derived_key = base64.urlsafe_b64encode(kdf.derive(encryption_key.encode()))
+            self.key = derived_key
         else:
+            # If no passphrase, generate a new random Fernet key
             self.key = Fernet.generate_key()
         
         self.cipher = Fernet(self.key)
@@ -49,17 +65,7 @@ class SecurityManager:
         
         logger.info(f"Security Manager initialized: {self.security_id}")
 
-    def _derive_key(self, password: str) -> bytes:
-        """Derive encryption key from password using PBKDF2"""
-        salt = b'finovate_salt_v1'  # In production, use random salt
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=100000,
-        )
-        key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
-        return key
+
 
     def encrypt_data(self, data: str) -> str:
         """Encrypt data using AES-256"""
@@ -80,20 +86,12 @@ class SecurityManager:
             raise
 
     def hash_password(self, password: str) -> str:
-        """Hash password using SHA-256 with salt"""
-        salt = secrets.token_hex(16)
-        hashed = hashlib.sha256((salt + password).encode()).hexdigest()
-        return f"{salt}:{hashed}"
+        """Hash password using bcrypt"""
+        return pwd_context.hash(password)
 
     def verify_password(self, password: str, hashed_password: str) -> bool:
-        """Verify password against hash"""
-        try:
-            salt, stored_hash = hashed_password.split(':')
-            check_hash = hashlib.sha256((salt + password).encode()).hexdigest()
-            return check_hash == stored_hash
-        except Exception as e:
-            logger.error(f"Password verification failed: {str(e)}")
-            return False
+        """Verify password against bcrypt hash"""
+        return pwd_context.verify(password, hashed_password)
 
     def generate_session_token(self, user_id: str, device_id: str) -> str:
         """Generate secure session token"""

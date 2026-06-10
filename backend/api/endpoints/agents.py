@@ -6,8 +6,10 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from backend.services.audit_service import get_audit_service
 
 router = APIRouter()
+audit_service = get_audit_service()
 
 class AgentTaskRequest(BaseModel):
     agent_name: str
@@ -62,7 +64,22 @@ async def get_agent_status(agent_name: str):
 @router.post("/execute")
 async def execute_agent_task(task: AgentTaskRequest):
     """تنفيذ مهمة لوكيل ذكي معين"""
-    # TODO: Implement actual agent execution
+    if task.agent_name == "Chief Audit AI Agent" and task.task_type == "full_audit":
+        company_code = task.parameters.get("company_code", "1000")
+        fiscal_year = task.parameters.get("fiscal_year", "2024")
+        engagement_id = task.parameters.get("engagement_id", 1)
+        
+        try:
+            results = await audit_service.run_full_ai_audit(company_code, fiscal_year, engagement_id)
+            return {
+                "success": True,
+                "agent_name": task.agent_name,
+                "status": "Completed",
+                "results": results
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+            
     return {
         "success": True,
         "task_id": "TASK-2025-001",

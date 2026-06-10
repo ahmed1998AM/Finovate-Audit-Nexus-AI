@@ -115,14 +115,54 @@ class ChiefAuditAgent:
     async def _execute_agent(self, agent_name: str, data: Any) -> Dict[str, Any]:
         """Execute a specific agent with given data"""
         logger.info(f"Executing agent: {agent_name}")
-        # Placeholder for actual agent execution
-        # In production, this would call the actual agent's execute method
-        return {
-            "agent": agent_name,
-            "status": "completed",
-            "timestamp": datetime.now().isoformat(),
-            "findings": []
-        }
+        
+        # In a real system, we'd use the AgentOrchestrator to get the agent instance
+        # For now, let's dynamically import and execute the agent's main logic
+        try:
+            agent_mapping = {
+                'journal_agent': ('agents.journal_agent.agent', 'JournalEntryAuditAgent', 'analyze_journal_entries'),
+                'ledger_agent': ('agents.ledger_agent.agent', 'GeneralLedgerAuditAgent', 'analyze_ledger'),
+                'tb_agent': ('agents.tb_agent.agent', 'TrialBalanceAuditAgent', 'analyze_trial_balance'),
+                'fs_agent': ('agents.fs_agent.agent', 'FinancialStatementsAuditAgent', 'analyze_financial_statements'),
+                'bank_agent': ('agents.bank_agent.agent', 'BankAuditAgent', 'analyze_bank_transactions'),
+                'inventory_agent': ('agents.inventory_agent.agent', 'InventoryAuditAgent', 'analyze_inventory'),
+                'assets_agent': ('agents.assets_agent.agent', 'FixedAssetsAuditAgent', 'analyze_assets'),
+                'fraud_agent': ('agents.fraud_agent.agent', 'FraudDetectionAgent', 'detect_fraud'),
+                'risk_agent': ('agents.risk_agent.agent', 'RiskScoringAgent', 'assess_risks'),
+                'compliance_agent': ('agents.compliance_agent.agent', 'ComplianceStandardsAgent', 'check_compliance')
+            }
+            
+            if agent_name in agent_mapping:
+                module_path, class_name, method_name = agent_mapping[agent_name]
+                import importlib
+                module = importlib.import_module(module_path)
+                agent_class = getattr(module, class_name)
+                agent_instance = agent_class()
+                method = getattr(agent_instance, method_name)
+                
+                # Execute the agent method (handle both sync and async)
+                if asyncio.iscoroutinefunction(method):
+                    result = await method(data)
+                else:
+                    result = method(data)
+                
+                return result
+            else:
+                logger.warning(f"No mapping found for agent: {agent_name}")
+                return {
+                    "agent": agent_name,
+                    "status": "not_implemented",
+                    "timestamp": datetime.now().isoformat(),
+                    "findings": []
+                }
+        except Exception as e:
+            logger.error(f"Error executing agent {agent_name}: {str(e)}")
+            return {
+                "agent": agent_name,
+                "status": "failed",
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            }
     
     async def _aggregate_results(self) -> Dict[str, Any]:
         """Aggregate results from all agents"""

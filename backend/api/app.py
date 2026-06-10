@@ -7,10 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
+import os
 import time
 
 from ..database import init_db
-from .endpoints import auth, companies, audit_projects, findings, agents, documents
+from .endpoints import auth, companies, audit_projects, findings, agents, documents, dashboard
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,7 +37,7 @@ app = FastAPI(
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # يجب تقييدها في الإنتاج
+    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000").split(","),  # يجب تقييدها في الإنتاج
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -98,3 +99,4 @@ app.include_router(audit_projects.router, prefix="/api/v1/audit-projects", tags=
 app.include_router(findings.router, prefix="/api/v1/findings", tags=["Audit Findings"])
 app.include_router(agents.router, prefix="/api/v1/agents", tags=["AI Agents"])
 app.include_router(documents.router, prefix="/api/v1/documents", tags=["Documents"])
+app.include_router(dashboard.router, prefix="/api/v1/audit", tags=["Dashboard"])

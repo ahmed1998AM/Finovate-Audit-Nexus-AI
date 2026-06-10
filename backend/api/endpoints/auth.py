@@ -6,8 +6,15 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta
 import jwt
-import hashlib
 import os
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Mock user database for demonstration purposes. In a real application, this would be a database.
+mock_user_db = {
+    "admin": {"username": "admin", "hashed_password": pwd_context.hash("admin123"), "role": "Admin"}
+}
 
 router = APIRouter()
 
@@ -30,23 +37,29 @@ class TokenResponse(BaseModel):
 
 # Helper functions
 def hash_password(password: str) -> str:
-    """تشفير كلمة المرور"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """تشفير كلمة المرور باستخدام bcrypt"""
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """التحقق من كلمة المرور"""
+    return pwd_context.verify(plain_password, hashed_password)
 
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     """إنشاء رمز وصول JWT"""
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(hours=24))
     to_encode.update({"exp": expire})
-    secret_key = os.getenv("JWT_SECRET_KEY", "finovate-secret-key-change-in-production")
+    secret_key = os.getenv("JWT_SECRET_KEY")
+    if not secret_key:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="JWT_SECRET_KEY not configured")
     return jwt.encode(to_encode, secret_key, algorithm="HS256")
 
 @router.post("/login", response_model=TokenResponse)
 async def login(login_data: LoginRequest):
     """تسجيل الدخول"""
     # TODO: Implement actual database verification
-    # This is a mock implementation
-    if login_data.username == "admin" and login_data.password == "admin123":
+    user = mock_user_db.get(login_data.username)
+    if not user or not verify_password(login_data.password, user["hashed_password"]):
         access_token = create_access_token(
             data={"sub": login_data.username, "role": "Admin"}
         )

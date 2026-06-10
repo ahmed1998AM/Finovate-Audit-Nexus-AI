@@ -32,12 +32,12 @@ class GeneralLedgerAuditAgent:
         
         logger.info(f"{self.agent_name} initialized with ID: {agent_id}")
     
-    async def analyze_ledger(self, ledger_data: pd.DataFrame) -> Dict[str, Any]:
+    async def analyze_ledger(self, ledger_data: Any) -> Dict[str, Any]:
         """
         تحليل دفتر الأستاذ
         
         Args:
-            ledger_data: DataFrame يحتوي على حركات دفتر الأستاذ
+            ledger_data: البيانات المدخلة (يمكن أن تكون DataFrame أو List of Dicts)
             
         Returns:
             dict: نتائج التحليل
@@ -45,9 +45,22 @@ class GeneralLedgerAuditAgent:
         logger.info("Starting general ledger analysis...")
         self.status = "analyzing"
         
+        # تحويل البيانات إلى DataFrame إذا لزم الأمر
+        if isinstance(ledger_data, list):
+            df = pd.DataFrame(ledger_data)
+        elif isinstance(ledger_data, pd.DataFrame):
+            df = ledger_data
+        else:
+            logger.warning("Invalid data format for ledger data. Expected list or DataFrame.")
+            return {"status": "error", "error": "Invalid data format"}
+
+        if df.empty:
+            logger.warning("No ledger data provided for analysis.")
+            return {"status": "empty", "total_entries": 0}
+
         results = {
             "analysis_timestamp": datetime.now().isoformat(),
-            "total_entries": len(ledger_data),
+            "total_entries": len(df),
             "anomalies": [],
             "patterns": {},
             "account_analysis": {},
@@ -56,19 +69,22 @@ class GeneralLedgerAuditAgent:
         
         try:
             # تحليل الحركات
-            results["transaction_analysis"] = await self._analyze_transactions(ledger_data)
+            results["transaction_analysis"] = await self._analyze_transactions(df)
             
             # كشف الحسابات غير الطبيعية
-            results["abnormal_accounts"] = await self._detect_abnormal_accounts(ledger_data)
+            results["abnormal_accounts"] = await self._detect_abnormal_accounts(df)
             
             # تحليل الأنماط
-            results["patterns"] = await self._analyze_patterns(ledger_data)
+            results["patterns"] = await self._analyze_patterns(df)
             
             # كشف الانحرافات
-            results["deviations"] = await self._detect_deviations(ledger_data)
+            results["deviations"] = await self._detect_deviations(df)
             
             # تحليل الأرصدة
-            results["balance_analysis"] = await self._analyze_balances(ledger_data)
+            results["balance_analysis"] = await self._analyze_balances(df)
+            
+            # Populate anomalies list from deviations
+            results["anomalies"] = results["deviations"]
             
             self.status = "completed"
             logger.info(f"Ledger analysis completed. Found {len(results['anomalies'])} anomalies")

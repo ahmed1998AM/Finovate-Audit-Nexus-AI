@@ -84,37 +84,84 @@ class AgentOrchestrator:
         }
         
         try:
-            # المرحلة 1: مراجعة قيود اليومية
-            if "journal_agent" in self.agents:
-                logger.info("Executing Journal Entry Audit Agent...")
-                journal_results = await self.agents["journal_agent"]["instance"].analyze_journal_entries(
-                    audit_data.get("journal_entries")
-                )
-                results["agent_results"]["journal_agent"] = journal_results
+            # Execute core agents in parallel for better performance
+            core_tasks = []
+            agent_names = []
+
+            # Stage 1: Define core audit tasks
+            core_agent_configs = [
+                ("journal_agent", "analyze_journal_entries", "journal_entries"),
+                ("ledger_agent", "analyze_ledger", "ledger_data"),
+                ("tb_agent", "analyze_trial_balance", "trial_balance"),
+                ("tax_agent", "analyze_vat_compliance", "vat_transactions"),
+                ("fs_agent", "analyze_financial_statements", "financial_statements"),
+                ("bank_agent", "analyze_bank_transactions", "bank_transactions"),
+                ("inventory_agent", "analyze_inventory", "inventory_data")
+            ]
+
+            for agent_name, method_name, data_key in core_agent_configs:
+                if agent_name in self.agents:
+                    agent_instance = self.agents[agent_name]["instance"]
+                    if hasattr(agent_instance, method_name):
+                        method = getattr(agent_instance, method_name)
+                        data = audit_data.get(data_key)
+                        
+                        logger.info(f"Queueing {agent_name}...")
+                        if asyncio.iscoroutinefunction(method):
+                            core_tasks.append(method(data))
+                        else:
+                            # Wrap sync methods in a thread or just run if lightweight
+                            core_tasks.append(asyncio.to_thread(method, data))
+                        agent_names.append(agent_name)
+
+            # Execute all core tasks in parallel
+            if core_tasks:
+                logger.info(f"Executing {len(core_tasks)} core agents in parallel...")
+                core_results = await asyncio.gather(*core_tasks, return_exceptions=True)
+                
+                for name, result in zip(agent_names, core_results):
+                    if isinstance(result, Exception):
+                        logger.error(f"Agent {name} failed: {str(result)}")
+                        results["agent_results"][name] = {"status": "error", "error": str(result)}
+                    else:
+                        results["agent_results"][name] = result
+
+            # Stage 2: Execute intelligence agents that depend on core results
+            intel_tasks = []
+            intel_agent_names = []
             
-            # المرحلة 2: مراجعة دفتر الأستاذ
-            if "ledger_agent" in self.agents:
-                logger.info("Executing General Ledger Audit Agent...")
-                ledger_results = await self.agents["ledger_agent"]["instance"].analyze_ledger(
-                    audit_data.get("ledger_data")
-                )
-                results["agent_results"]["ledger_agent"] = ledger_results
+            intel_agent_configs = [
+                ("fraud_agent", "detect_fraud"),
+                ("risk_agent", "assess_risks"),
+                ("compliance_agent", "check_compliance")
+            ]
             
-            # المرحلة 3: مراجعة ميزان المراجعة
-            if "tb_agent" in self.agents:
-                logger.info("Executing Trial Balance Audit Agent...")
-                tb_results = await self.agents["tb_agent"]["instance"].analyze_trial_balance(
-                    audit_data.get("trial_balance")
-                )
-                results["agent_results"]["tb_agent"] = tb_results
+            # Combine original data with core results for intelligence agents
+            combined_data = {**audit_data, "core_results": results["agent_results"]}
             
-            # المرحلة 4: مراجعة الضرائب
-            if "tax_agent" in self.agents:
-                logger.info("Executing Tax Compliance Agent...")
-                tax_results = await self.agents["tax_agent"]["instance"].analyze_vat_compliance(
-                    audit_data.get("vat_transactions")
-                )
-                results["agent_results"]["tax_agent"] = tax_results
+            for agent_name, method_name in intel_agent_configs:
+                if agent_name in self.agents:
+                    agent_instance = self.agents[agent_name]["instance"]
+                    if hasattr(agent_instance, method_name):
+                        method = getattr(agent_instance, method_name)
+                        
+                        logger.info(f"Queueing intelligence agent {agent_name}...")
+                        if asyncio.iscoroutinefunction(method):
+                            intel_tasks.append(method(combined_data))
+                        else:
+                            intel_tasks.append(asyncio.to_thread(method, combined_data))
+                        intel_agent_names.append(agent_name)
+            
+            if intel_tasks:
+                logger.info(f"Executing {len(intel_tasks)} intelligence agents...")
+                intel_results = await asyncio.gather(*intel_tasks, return_exceptions=True)
+                
+                for name, result in zip(intel_agent_names, intel_results):
+                    if isinstance(result, Exception):
+                        logger.error(f"Intelligence agent {name} failed: {str(result)}")
+                        results["agent_results"][name] = {"status": "error", "error": str(result)}
+                    else:
+                        results["agent_results"][name] = result
             
             # تجميع النتائج
             results["consolidated_findings"] = self._consolidate_findings(results["agent_results"])

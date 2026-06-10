@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم المراجعة - Finovate Audit Nexus AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .kpi-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-right: 4px solid #667eea;
+        }
+        
+        .kpi-card.high {
+            border-right-color: #f44336;
+        }
+        
+        .kpi-card.medium {
+            border-right-color: #ff9800;
+        }
+        
+        .kpi-card.low {
+            border-right-color: #4caf50;
+        }
+        
+        .kpi-label {
+            color: #999;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        
+        .kpi-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .kpi-change {
+            font-size: 12px;
+            color: #4caf50;
+        }
+        
+        .kpi-change.negative {
+            color: #f44336;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        
+        .findings-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .findings-table th {
+            background: #f5f5f5;
+            padding: 12px;
+            text-align: right;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        .findings-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .severity-critical {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .severity-high {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        
+        .severity-medium {
+            background: #fff8e1;
+            color: #f57f17;
+        }
+        
+        .severity-low {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .alert-error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #f44336;
+        }
+        
+        .alert-warning {
+            background: #fff3e0;
+            color: #e65100;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #999;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📊 لوحة تحكم المراجعة الذكية</h1>
+                <p style="color: #999; margin-top: 5px;">نظام التدقيق والمراجعة المحاسبية بالذكاء الاصطناعي</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-primary" onclick="runAudit()">🚀 تشغيل المراجعة</button>
+                <button class="btn-secondary" onclick="refreshDashboard()">🔄 تحديث</button>
+                <button class="btn-secondary" onclick="exportReport()">📥 تصدير</button>
+            </div>
+        </div>
+        
+        <div id="alerts"></div>
+        
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">درجة المخاطر الإجمالية</div>
+                <div class="kpi-value" id="risk-score">--</div>
+                <div class="kpi-change" id="risk-trend">جاري التحديث...</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">الملاحظات المكتشفة</div>
+                <div class="kpi-value" id="findings-count">--</div>
+                <div class="kpi-change">من الفحوصات الشاملة</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">درجة الامتثال</div>
+                <div class="kpi-value" id="compliance-score">--</div>
+                <div class="kpi-change">للمعايير المحاسبية</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">حالة المراجعة</div>
+                <div class="kpi-value" id="audit-status">--</div>
+                <div class="kpi-change">آخر تحديث الآن</div>
+            </div>
+        </div>
+        
+        <!-- Charts and Analysis -->
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-title">توزيع المخاطر حسب الفئة</div>
+                <div class="chart-container">
+                    <canvas id="riskChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">درجات الامتثال</div>
+                <div class="chart-container">
+                    <canvas id="complianceChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Findings Table -->
+        <div class="card">
+            <div class="card-title">الملاحظات والنتائج</div>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('all')">جميع الملاحظات</button>
+                <button class="tab" onclick="switchTab('critical')">حرجة</button>
+                <button class="tab" onclick="switchTab('high')">عالية</button>
+                <button class="tab" onclick="switchTab('medium')">متوسطة</button>
+            </div>
+            <div id="findings-content">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    جاري تحميل الملاحظات...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let riskChart, complianceChart;
+        
+        async function initDashboard() {
+            await loadDashboardData();
+            initCharts();
+        }
+        
+        async function loadDashboardData() {
+            try {
+                const response = await axios.get('/api/audit/dashboard');
+                const data = response.data;
+                
+                // Update KPIs
+                document.getElementById('risk-score').textContent = data.riskScore + '%';
+                document.getElementById('findings-count').textContent = data.findingsCount;
+                document.getElementById('compliance-score').textContent = data.complianceScore + '%';
+                document.getElementById('audit-status').textContent = data.auditStatus;
+                
+                // Update findings
+                displayFindings(data.findings);
+                
+                // Update charts
+                updateCharts(data);
+            } catch (error) {
+                showAlert('خطأ في تحميل البيانات: ' + error.message, 'error');
+            }
+        }
+        
+        function initCharts() {
+            const riskCtx = document.getElementById('riskChart').getContext('2d');
+            riskChart = new Chart(riskCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['حرج', 'عالي', 'متوسط', 'منخفض'],
+                    datasets: [{
+                        data: [15, 25, 35, 25],
+                        backgroundColor: ['#f44336', '#ff9800', '#ffc107', '#4caf50'],
+                        borderColor: 'white',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 20, font: { size: 12 } }
+                        }
+                    }
+                }
+            });
+            
+            const complianceCtx = document.getElementById('complianceChart').getContext('2d');
+            complianceChart = new Chart(complianceCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['IFRS', 'IAS', 'معايير مصرية', 'ISA'],
+                    datasets: [{
+                        label: 'درجة الامتثال %',
+                        data: [85, 92, 78, 88],
+                        backgroundColor: '#667eea',
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: { beginAtZero: true, max: 100 }
+                    }
+                }
+            });
+        }
+        
+        function displayFindings(findings) {
+            const content = document.getElementById('findings-content');
+            if (!findings || findings.length === 0) {
+                content.innerHTML = '<p style="text-align: center; color: #999;">لا توجد ملاحظات</p>';
+                return;
+            }
+            
+            let html = '<table class="findings-table"><thead><tr><th>الوصف</th><th>الخطورة</th><th>الحالة</th><th>التوصية</th></tr></thead><tbody>';
+            findings.forEach(finding => {
+                html += `<tr>
+                    <td>${finding.description}</td>
+                    <td><span class="severity-badge severity-${finding.severity}">${finding.severity}</span></td>
+                    <td><span class="status-badge">${finding.status}</span></td>
+                    <td>${finding.recommendation}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        function updateCharts(data) {
+            if (riskChart) {
+                riskChart.data.datasets[0].data = data.riskDistribution;
+                riskChart.update();
+            }
+            if (complianceChart) {
+                complianceChart.data.datasets[0].data = data.complianceScores;
+                complianceChart.update();
+            }
+        }
+        
+        async function runAudit() {
+            showAlert('جاري تشغيل المراجعة الذكية...', 'warning');
+            try {
+                const response = await axios.post('/api/agents/execute', {
+                    agent_name: 'Chief Audit AI Agent',
+                    task_type: 'full_audit',
+                    parameters: {
+                        company_code: '1000',
+                        fiscal_year: '2024',
+                        engagement_id: 1
+                    }
+                });
+                showAlert('تم تشغيل المراجعة بنجاح!', 'success');
+                setTimeout(() => loadDashboardData(), 2000);
+            } catch (error) {
+                showAlert('خطأ: ' + error.message, 'error');
+            }
+        }
+        
+        function refreshDashboard() {
+            loadDashboardData();
+        }
+        
+        function exportReport() {
+            showAlert('جاري تصدير التقرير...', 'warning');
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+        
+        function showAlert(message, type) {
+            const alertsDiv = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertsDiv.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', initDashboard);
+    </script>
+</body>
+</html>

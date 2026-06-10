@@ -5,6 +5,9 @@ Audit Service - خدمة إدارة مشاريع المراجعة والتدقي
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
+from database.db_manager import get_db_manager
+from connectors.sap_connector.connector import SAPErpConnector, SAPConnectionConfig
+from agents.chief_agent.agent import get_chief_agent
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +32,57 @@ class AuditService:
             db_session: جلسة قاعدة البيانات
         """
         self.db_session = db_session
+        self.db_manager = get_db_manager()
+        self.chief_agent = get_chief_agent()
         self.active_projects = {}
         logger.info("AuditService initialized")
+
+    async def run_full_ai_audit(self, company_code: str, fiscal_year: str, engagement_id: int) -> Dict[str, Any]:
+        """
+        Run a full AI-driven audit workflow
+        """
+        session = self.db_manager.get_session()
+        try:
+            # 1. Connect to ERP (Mocked)
+            config = SAPConnectionConfig(
+                host="sap-erp.company.com",
+                system_number="00",
+                client="100",
+                username="audit_user",
+                password="secure_password"
+            )
+            connector = SAPErpConnector(config)
+            connector.connect()
+
+            # 2. Fetch Data
+            journal_entries = connector.get_journal_entries(company_code, fiscal_year)
+            income_statement = connector.get_financial_statements(company_code, fiscal_year, "income_statement")
+            balance_sheet = connector.get_financial_statements(company_code, fiscal_year, "balance_sheet")
+
+            # 3. Save raw data
+            self.db_manager.save_financial_data(session, journal_entries, "SAP")
+            
+            # 4. Run AI analysis
+            audit_data = {
+                "journal_entries": journal_entries,
+                "income_statement": {"current": income_statement},
+                "balance_sheet": balance_sheet,
+                "entity_id": company_code,
+                "fiscal_year": fiscal_year
+            }
+            analysis_results = await self.chief_agent.run_audit_workflow(audit_data)
+
+            # 5. Save findings
+            if 'fraud_agent' in analysis_results.get('core_results', {}):
+                fraud_findings = analysis_results['core_results']['fraud_agent']
+                self.db_manager.save_anomalies(session, fraud_findings.get('fraud_indicators', []))
+            
+            if 'risk_assessment' in analysis_results:
+                self.db_manager.save_risk_assessment(session, analysis_results['risk_assessment'], engagement_id)
+
+            return analysis_results
+        finally:
+            session.close()
     
     def create_audit_project(
         self,

@@ -357,6 +357,39 @@ class RiskScoringAgent:
         else:
             return RiskLevel.LOW.value
             
+    async def assess_risks(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Orchestrate the risk assessment process
+        
+        Args:
+            data: Combined financial data and core agent results
+            
+        Returns:
+            Comprehensive risk assessment results
+        """
+        # Calculate scores for each category
+        financial_score = self.calculate_financial_risk(data)
+        
+        # Extract indicators from core results if available
+        core_results = data.get('core_results', {})
+        fraud_indicators = core_results.get('fraud_agent', {})
+        compliance_data = core_results.get('compliance_agent', {})
+        
+        fraud_score = self.calculate_fraud_risk(fraud_indicators)
+        compliance_score = self.calculate_compliance_risk(compliance_data)
+        tax_score = self.calculate_tax_risk(data.get('tax_data', {}))
+        
+        category_scores = {
+            RiskCategory.FINANCIAL.value: financial_score,
+            RiskCategory.FRAUD.value: fraud_score,
+            RiskCategory.COMPLIANCE.value: compliance_score,
+            RiskCategory.TAX.value: tax_score,
+            RiskCategory.OPERATIONAL.value: 20.0  # Default value
+        }
+        
+        assessment = self.create_assessment("ENTITY", data.get("entity_id", "DEFAULT"), category_scores)
+        return asdict(assessment)
+
     def create_assessment(self, entity_type: str, entity_id: str, 
                          category_scores: Dict[str, float]) -> RiskAssessment:
         """إنشاء تقييم مخاطر شامل"""

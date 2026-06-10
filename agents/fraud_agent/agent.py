@@ -40,6 +40,10 @@ class FraudDetectionAgent:
         
         logger.info(f"{self.name} initialized")
     
+    async def detect_fraud(self, financial_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Alias for analyze method for orchestrator compatibility"""
+        return await self.analyze(financial_data)
+
     async def analyze(self, financial_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Perform comprehensive fraud analysis
@@ -62,6 +66,10 @@ class FraudDetectionAgent:
                 'confidence_level': 0.0,
                 'recommendations': []
             }
+            
+            # Handle empty data
+            if not financial_data:
+                return findings
             
             # Analyze journal entries for fraud
             if 'journal_entries' in financial_data:
@@ -106,9 +114,9 @@ class FraudDetectionAgent:
             return findings
             
         except Exception as e:
-            logger.error(f"Fraud detection failed: {e}")
+            logger.error(f"Fraud detection failed: {str(e)}")
             self.status = "failed"
-            raise
+            return {"status": "error", "error": str(e)}
     
     async def _analyze_journal_entries(self, entries: List[Dict]) -> Dict[str, List]:
         """Analyze journal entries for fraud indicators"""

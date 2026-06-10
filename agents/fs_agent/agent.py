@@ -84,6 +84,61 @@ class FinancialStatementsAuditAgent:
             "cash_flow_divergence": 0.25
         }
         
+    async def analyze_financial_statements(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Orchestrate the financial statements analysis process
+        
+        Args:
+            data: Financial statements data
+            
+        Returns:
+            Comprehensive analysis results
+        """
+        results = {
+            "income_statement": None,
+            "balance_sheet": None,
+            "cash_flow": None,
+            "overall_status": "completed",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        if not data:
+            return results
+
+        # Analyze Income Statement
+        if 'income_statement' in data:
+            is_data = data['income_statement']
+            is_result = self.analyze_income_statement(
+                is_data.get('current', {}),
+                is_data.get('prior')
+            )
+            results["income_statement"] = vars(is_result)
+
+        # Analyze Balance Sheet
+        if 'balance_sheet' in data:
+            bs_data = data['balance_sheet']
+            bs_result = self.analyze_balance_sheet(
+                bs_data.get('assets', {}),
+                bs_data.get('liabilities', {}),
+                bs_data.get('equity', {}),
+                bs_data.get('prior')
+            )
+            results["balance_sheet"] = vars(bs_result)
+
+        # Analyze Cash Flow
+        if 'cash_flow' in data:
+            cf_data = data['cash_flow']
+            cf_result = self.analyze_cash_flow(
+                cf_data.get('operating', 0),
+                cf_data.get('investing', 0),
+                cf_data.get('financing', 0),
+                cf_data.get('net_income', 0),
+                cf_data.get('prior')
+            )
+            results["cash_flow"] = vars(cf_result)
+
+        return results
+
     def analyze_income_statement(self, 
                                   current_period: Dict[str, float],
                                   prior_period: Optional[Dict[str, float]] = None,

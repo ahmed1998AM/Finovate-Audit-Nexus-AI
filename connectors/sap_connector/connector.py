@@ -23,7 +23,9 @@ class SAPConnectionConfig:
     port: int = 3300
 
 
-class SAPErpConnector:
+from connectors.base_connector import BaseERPConnector
+
+class SAPErpConnector(BaseERPConnector):
     """
     موصل SAP ERP للقراءة فقط
     يدعم BAPI و RFC
