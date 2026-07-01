@@ -4,9 +4,9 @@ Implementation of LLMInterface for Ollama (Local LLM Models)
 Enterprise AI Financial Audit & Intelligence Platform
 """
 
-import os
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 try:
@@ -15,7 +15,7 @@ except ImportError:
     logger.error("Requests library not installed. Install with: pip install requests")
     requests = None
 
-from backend.ai_engine.llm_interface import LLMInterface, LLMResponse, LLMMessage
+from backend.ai_engine.llm_interface import LLMInterface, LLMMessage, LLMResponse
 
 
 class OllamaProvider(LLMInterface):

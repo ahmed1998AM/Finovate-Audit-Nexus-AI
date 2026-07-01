@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.tax_agent.agent import TaxComplianceAgent
-from backend.core.models import AuditProject, Document
+from backend.database.models import AuditProject, Document
 from datetime import datetime
 
 
@@ -21,7 +21,7 @@ def run_tax_compliance_demo():
     print()
     
     # إنشاء وكيل الضرائب
-    tax_agent = TaxAgent()
+    tax_agent = TaxComplianceAgent(country="EG")
     
     # بيانات تجريبية
     sample_transactions = [

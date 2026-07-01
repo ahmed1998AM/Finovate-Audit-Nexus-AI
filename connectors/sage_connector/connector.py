@@ -3,13 +3,14 @@ Finovate Audit Nexus AI - Sage ERP Connector
 الاتصال المباشر مع أنظمة Sage (Sage 100, Sage X3, Sage Intacct)
 """
 import logging
-from typing import Dict, List, Any, Optional
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from connectors.base_connector import BaseERPConnector
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class SageConnectionConfig:
@@ -22,60 +23,67 @@ class SageConnectionConfig:
     company: str = ""
     database: Optional[str] = None
 
-
-class SageErpConnector:
+class SageErpConnector(BaseERPConnector):
     """
     موصل Sage ERP للقراءة فقط
     يدعم Sage 100 و Sage X3 و Sage Intacct
-    
+
     ملاحظة: يتطلب requests أو مكتبات خاصة حسب المنتج
     """
 
     def __init__(self, config: SageConnectionConfig):
+        super().__init__()
         self.config = config
         self.access_token = None
-        self.is_connected = False
-        self.last_sync: Optional[datetime] = None
         self.base_url = f"http://{config.host}:{config.port}" if config.product in ['sage100', 'sagex3'] else "https://api.intacct.com"
 
     def connect(self) -> bool:
-        """
-        إنشاء اتصال بـ Sage ERP
-        """
         try:
             if self.config.product == 'intacct':
-                # Sage Intacct يستخدم XML API
-                logger.info(f"Connecting to Sage Intacct")
-                logger.warning("Sage Intacct connection simulated - implement XML API for real connection")
-            elif self.config.product == 'sagex3':
-                # Sage X3 يستخدم Web Services
-                logger.info(f"Connecting to Sage X3 at {self.config.host}")
-                logger.warning("Sage X3 connection simulated - implement SOAP API for real connection")
+                import requests as _req
+                from xml.etree import ElementTree as ET
+                auth_xml = ET.Element('request')
+                ctrl = ET.SubElement(auth_xml, 'control')
+                ET.SubElement(ctrl, 'senderid').text = self.config.username
+                ET.SubElement(ctrl, 'password').text = self.config.password
+                ctrl2 = ET.SubElement(auth_xml, 'operation')
+                ET.SubElement(ctrl2, 'authentication')
+                body = ET.tostring(auth_xml, encoding='unicode')
+                resp = _req.post(self.base_url, data=body, headers={'Content-Type': 'text/xml'})
+                self._connected = resp.status_code < 400
+                if self._connected:
+                    self.access_token = resp.text
             else:
-                # Sage 100 يستخدم ODBC أو REST
-                logger.info(f"Connecting to Sage 100 at {self.config.host}")
-                logger.warning("Sage 100 connection simulated - implement ODBC/REST for real connection")
+                import requests as _req
+                import base64
+                creds = base64.b64encode(f"{self.config.username}:{self.config.password}".encode()).decode()
+                resp = _req.get(f"{self.base_url}/api/health", headers={'Authorization': f'Basic {creds}'}, timeout=10)
+                if resp.status_code < 400:
+                    self._connected = True
+                    self.access_token = creds
+                else:
+                    self._connected = (resp.status_code == 404)
+                    self.access_token = creds
 
-            self.is_connected = True
-            self.last_sync = datetime.now()
-
-            return True
+            if self._connected:
+                self.last_sync = datetime.now()
+            return self._connected
 
         except Exception as e:
             logger.error(f"Sage connection failed: {str(e)}")
-            self.is_connected = False
+            self._connected = False
             return False
 
     def disconnect(self) -> None:
         """قطع الاتصال"""
         self.access_token = None
-        self.is_connected = False
+        self._connected = False
         logger.info("Disconnected from Sage ERP")
 
     def test_connection(self) -> Dict[str, Any]:
         """اختبار الاتصال"""
         result = {
-            "status": "connected" if self.is_connected else "disconnected",
+            "status": "connected" if self._connected else "disconnected",
             "product": self.config.product,
             "host": self.config.host,
             "company": self.config.company,
@@ -83,7 +91,7 @@ class SageErpConnector:
             "read_only": True
         }
 
-        if self.is_connected:
+        if self._connected:
             result["system_info"] = {
                 "platform": f"Sage {self.config.product}",
                 "version": "2024"
@@ -92,18 +100,20 @@ class SageErpConnector:
         return result
 
     def _get_headers(self) -> Dict:
-        """الحصول على رؤساء الطلب"""
         headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
         if self.access_token:
-            headers['Authorization'] = f'Bearer {self.access_token}'
+            if self.config.product in ('sage100', 'sagex3'):
+                headers['Authorization'] = f'Basic {self.access_token}'
+            else:
+                headers['Authorization'] = f'Bearer {self.access_token}'
         return headers
 
     def _request(self, method: str, endpoint: str, params: Optional[Dict] = None, data: Optional[Dict] = None) -> Dict:
         """تنفيذ طلب API"""
-        if not self.is_connected:
+        if not self._connected:
             logger.warning("Not connected to Sage ERP")
             return {}
 
@@ -111,17 +121,11 @@ class SageErpConnector:
         headers = self._get_headers()
 
         try:
-            # محاكاة الطلب
             logger.info(f"Requesting {method} {url}")
-            
-            # في البيئة الإنتاجية:
-            # import requests
-            # response = requests.request(method, url, headers=headers, params=params, json=data)
-            # response.raise_for_status()
-            # return response.json()
-            
-            return {}  # محاكاة
-            
+            import requests
+            response = requests.request(method, url, headers=headers, params=params, json=data)
+            response.raise_for_status()
+            return response.json()
         except Exception as e:
             logger.error(f"Request failed: {str(e)}")
             return {}
@@ -134,12 +138,12 @@ class SageErpConnector:
     ) -> List[Dict]:
         """
         جلب قيود اليومية من Sage
-        
+
         Args:
             date_from: تاريخ البدء
             date_to: تاريخ الانتهاء
             company: الشركة
-            
+
         Returns:
             List[Dict]: قائمة القيود
         """
@@ -147,7 +151,7 @@ class SageErpConnector:
             endpoint = "generaljournalentry/query"
         else:
             endpoint = "api/journal-entries"
-        
+
         params = {}
         if date_from:
             params['dateFrom'] = date_from
@@ -157,11 +161,11 @@ class SageErpConnector:
             params['company'] = company or self.config.company
 
         results = self._request('GET', endpoint, params)
-        
+
         # توحيد التنسيق
         entries = results.get('items', []) if isinstance(results, dict) else []
         standardized = []
-        
+
         for entry in entries:
             standardized.append({
                 'id': entry.get('id') or entry.get('reference'),
@@ -171,7 +175,7 @@ class SageErpConnector:
                 'amount': entry.get('amount', 0),
                 'lines': entry.get('lines', [])
             })
-        
+
         return standardized
 
     def get_trial_balance(
@@ -181,7 +185,7 @@ class SageErpConnector:
     ) -> List[Dict]:
         """
         جلب ميزان المراجعة
-        
+
         Returns:
             List[Dict]: ميزان المراجعة
         """
@@ -189,7 +193,7 @@ class SageErpConnector:
             endpoint = "trialbalance/query"
         else:
             endpoint = "api/trial-balance"
-        
+
         params = {}
         if date:
             params['asOfDate'] = date
@@ -197,10 +201,10 @@ class SageErpConnector:
             params['company'] = company or self.config.company
 
         results = self._request('GET', endpoint, params)
-        
+
         balances = results.get('items', []) if isinstance(results, dict) else []
         standardized = []
-        
+
         for bal in balances:
             standardized.append({
                 'account_code': bal.get('accountNo') or bal.get('accountId'),
@@ -209,7 +213,7 @@ class SageErpConnector:
                 'credit': float(bal.get('creditAmount') or 0),
                 'balance': float(bal.get('balance') or 0)
             })
-        
+
         return standardized
 
     def get_accounts(self, company: Optional[str] = None) -> List[Dict]:
@@ -218,16 +222,16 @@ class SageErpConnector:
             endpoint = "glaccount/query"
         else:
             endpoint = "api/accounts"
-        
+
         params = {}
         if company or self.config.company:
             params['company'] = company or self.config.company
 
         results = self._request('GET', endpoint, params)
-        
+
         accounts = results.get('items', []) if isinstance(results, dict) else []
         standardized = []
-        
+
         for acc in accounts:
             standardized.append({
                 'code': acc.get('accountNo') or acc.get('accountId'),
@@ -235,7 +239,7 @@ class SageErpConnector:
                 'type': acc.get('accountType'),
                 'balance': acc.get('balance', 0)
             })
-        
+
         return standardized
 
     def get_financial_statements(
@@ -256,7 +260,7 @@ class SageErpConnector:
             'erp_type': f'Sage {self.config.product}',
             'host': self.config.host,
             'company': self.config.company,
-            'connected': self.is_connected,
+            'connected': self._connected,
             'last_sync': self.last_sync.isoformat() if self.last_sync else None
         }
 
@@ -267,21 +271,30 @@ class SageErpConnector:
             'trial_balance': 0,
             'accounts': 0
         }
-        
-        if self.is_connected:
+
+        if self._connected:
             entries = self.get_journal_entries()
             results['journal_entries'] = len(entries)
-            
+
             tb = self.get_trial_balance()
             results['trial_balance'] = len(tb)
-            
+
             accounts = self.get_accounts()
             results['accounts'] = len(accounts)
-            
+
             self.last_sync = datetime.now()
-        
+
         return results
 
-    def is_connected(self) -> bool:
-        """التحقق من حالة الاتصال"""
-        return self.is_connected
+def create_sage_connector(config: Dict[str, Any]) -> SageErpConnector:
+    """إنشاء موصل Sage"""
+    sage_config = SageConnectionConfig(
+        product=config.get("product", "intacct"),
+        host=config.get("host", "localhost"),
+        port=config.get("port", 443),
+        username=config.get("username", ""),
+        password=config.get("password", ""),
+        company=config.get("company", ""),
+        database=config.get("database", None)
+    )
+    return SageErpConnector(sage_config)

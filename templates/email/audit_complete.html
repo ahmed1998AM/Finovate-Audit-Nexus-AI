@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block content %}
+<p>{{ greeting }}</p>
+<p>{{ complete_text }}</p>
+<div style="margin:20px 0;">
+<p><strong>{{ project_label }}:</strong> {{ project_name }}</p>
+<p><strong>{{ status_label }}:</strong> <span class="badge badge-{{ status_class }}">{{ status }}</span></p>
+<p><strong>{{ findings_label }}:</strong> {{ findings_count }}</p>
+<p><strong>{{ duration_label }}:</strong> {{ duration }}</p>
+</div>
+<div style="text-align:center;margin:20px 0;">
+<a href="{{ report_url }}" class="btn">{{ btn_text }}</a>
+</div>
+{% endblock %}

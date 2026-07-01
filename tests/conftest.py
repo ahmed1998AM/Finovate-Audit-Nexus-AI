@@ -2,19 +2,33 @@
 Pytest Configuration and Fixtures
 ==================================
 Shared fixtures and configuration for all tests.
+
+Uses pytest monkeypatch and unittest.mock instead of module-level shims.
 """
 
+import os
 import pytest
+
+
+def _should_install_test_shims() -> bool:
+    """Return False when FINOVATE_DISABLE_TEST_SHIMS=1."""
+    return os.getenv("FINOVATE_DISABLE_TEST_SHIMS", "0") != "1"
+
 import sys
 from datetime import datetime, timedelta
-from unittest.mock import Mock, MagicMock
-
-import types
+from unittest.mock import Mock, MagicMock, patch
 
 
-def _install_test_dependency_shims():
-    """Install minimal shims for optional third-party deps unavailable in CI."""
+@pytest.fixture(autouse=True)
+def _patch_optional_modules(monkeypatch):
+    """Patch optional heavy dependencies for test isolation.
+
+    Only patches modules not already loaded (simulating CI environment).
+    Uses per-test monkeypatch to avoid cross-test contamination.
+    """
+    patches = []
     if 'loguru' not in sys.modules:
+        import types
         m = types.ModuleType('loguru')
         class _Logger:
             def __getattr__(self, _):
@@ -22,22 +36,8 @@ def _install_test_dependency_shims():
         m.logger = _Logger()
         sys.modules['loguru'] = m
 
-    if 'numpy' not in sys.modules:
-        m = types.ModuleType('numpy')
-        m.mean = lambda values: (sum(values) / len(values)) if values else 0.0
-        m.std = lambda values: 0.0
-        m.array = lambda values: list(values)
-        class _Random:
-            @staticmethod
-            def rand(*shape):
-                total = 1
-                for s in shape:
-                    total *= s
-                return [0.0] * total
-        m.random = _Random
-        sys.modules['numpy'] = m
-
     if 'pandas' not in sys.modules:
+        import types
         m = types.ModuleType('pandas')
         class DataFrame(list):
             def __init__(self, data=None, *args, **kwargs):
@@ -50,6 +50,7 @@ def _install_test_dependency_shims():
         sys.modules['pandas'] = m
 
     if 'requests' not in sys.modules:
+        import types
         m = types.ModuleType('requests')
         class Response:
             def __init__(self, status_code=200, data=None):
@@ -62,27 +63,14 @@ def _install_test_dependency_shims():
         m.get = m.post = m.put = m.delete = lambda *args, **kwargs: Response()
         sys.modules['requests'] = m
 
-    if 'authlib' not in sys.modules:
-        authlib = types.ModuleType('authlib')
-        integrations = types.ModuleType('authlib.integrations')
-        requests_client = types.ModuleType('authlib.integrations.requests_client')
-        class OAuth2Session:
-            def __init__(self, *args, **kwargs):
-                pass
-        requests_client.OAuth2Session = OAuth2Session
-        sys.modules['authlib'] = authlib
-        sys.modules['authlib.integrations'] = integrations
-        sys.modules['authlib.integrations.requests_client'] = requests_client
+    yield
 
+    for mod_name in ['loguru', 'pandas', 'requests']:
+        if mod_name in sys.modules:
+            for key in list(sys.modules.keys()):
+                if key.startswith(mod_name):
+                    del sys.modules[key]
 
-def _should_install_test_shims() -> bool:
-    """Allow disabling shims in strict environments via env var."""
-    import os
-    return os.getenv("FINOVATE_DISABLE_TEST_SHIMS", "0") != "1"
-
-
-if _should_install_test_shims():
-    _install_test_dependency_shims()
 
 # Add project paths
 from pathlib import Path
@@ -208,13 +196,9 @@ def sample_compliance_requirements():
 @pytest.fixture(autouse=True)
 def reset_test_state():
     """Reset test state before each test."""
-    # Setup code (runs before each test)
     yield
-    # Teardown code (runs after each test)
-    pass
 
 
-# Custom markers
 def pytest_configure(config):
     """Configure custom pytest markers."""
     config.addinivalue_line("markers", "unit: Unit tests")

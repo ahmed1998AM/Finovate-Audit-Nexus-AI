@@ -4,12 +4,13 @@ Performance Tests for Finovate Audit Nexus AI
 Load testing and performance benchmarks.
 """
 
+import os
 import pytest
 import time
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-sys.path.insert(0, '/workspace')
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 
 class TestAgentPerformance:
@@ -92,10 +93,12 @@ class TestConnectorPerformance:
     
     def test_connector_initialization_speed(self):
         """Test connector initialization speed."""
-        from connectors.sap_connector.connector import SAPConnector
+        from connectors.sap_connector.connector import SAPErpConnector, SAPConnectionConfig
         
         start_time = time.time()
-        connector = SAPConnector()
+        config = SAPConnectionConfig(host="localhost", system_number="00", client="100",
+                                     username="test", password="test")
+        connector = SAPErpConnector(config=config)
         elapsed = time.time() - start_time
         
         # Should initialize in less than 1 second
@@ -104,19 +107,24 @@ class TestConnectorPerformance:
         
     def test_multiple_connectors_parallel(self):
         """Test multiple connectors running in parallel."""
-        from connectors.sap_connector.connector import SAPConnector
-        from connectors.oracle_connector.connector import OracleConnector
-        from connectors.dynamics_connector.connector import DynamicsConnector
+        from connectors.sap_connector.connector import SAPErpConnector, SAPConnectionConfig
+        from connectors.oracle_connector.connector import OracleErpConnector, OracleConnectionConfig
+        from connectors.dynamics_connector.connector import DynamicsErpConnector, DynamicsConnectionConfig
+        
+        configs = [
+            (SAPErpConnector, SAPConnectionConfig(host="h", system_number="00", client="100", username="u", password="p")),
+            (OracleErpConnector, OracleConnectionConfig(host="h", port=1521, service_name="s", username="u", password="p")),
+            (DynamicsErpConnector, DynamicsConnectionConfig(tenant_id="t", client_id="c", client_secret="s", environment_url="https://x.com")),
+        ]
         
         start_time = time.time()
         
         connectors = []
-        for ConnectorClass in [SAPConnector, OracleConnector, DynamicsConnector]:
+        for cls, cfg in configs:
             try:
-                connector = ConnectorClass()
+                connector = cls(config=cfg)
                 connectors.append(connector)
             except Exception:
-                # Some connectors may need credentials
                 pass
                 
         elapsed = time.time() - start_time

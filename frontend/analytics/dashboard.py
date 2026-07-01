@@ -1,84 +1,86 @@
-"""
-Finovate Audit Nexus AI - Analytics Dashboard Widget
-Enterprise AI Financial Audit & Intelligence Platform
-"""
-
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QFrame
 from PySide6.QtCore import Qt
-import sys
+from frontend.api_client import get_client
+from frontend.styles.design_system import Color
+
 
 class AnalyticsDashboard(QWidget):
-    """Main Analytics Dashboard for Financial Intelligence"""
-    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Analytics Dashboard")
         self.setup_ui()
-    
-    def setup_ui(self):
-        """Initialize the dashboard UI"""
-        main_layout = QVBoxLayout(self)
-        
-        # Header
-        header = QLabel("Financial Analytics Dashboard")
-        header.setStyleSheet("font-size: 24px; font-weight: bold; color: #2E86AB;")
-        header.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(header)
-        
-        # KPI Grid
-        grid = QGridLayout()
-        
-        # Sample KPI Cards
-        kpis = [
-            ("Total Revenue", "$1,234,567", "+12.5%"),
-            ("Net Profit", "$456,789", "+8.3%"),
-            ("Risk Score", "Medium", "-2.1%"),
-            ("Fraud Alerts", "3", "0%"),
-            ("Compliance Rate", "98.5%", "+1.2%"),
-            ("Audit Progress", "75%", "+15%"),
-        ]
-        
+        self.load_data()
+
+    def load_data(self):
+        try:
+            data = get_client().get_dashboard_v1()
+            kpis = [
+                ("Risk Score", f'{data.get("riskScore", 0):.1f}', ""),
+                ("Findings", str(data.get("findingsCount", 0)), ""),
+                ("Compliance Rate", f'{data.get("complianceScore", 0):.1f}%', ""),
+                ("Audit Status", data.get("auditStatus", ""), ""),
+            ]
+            risk_dist = data.get("riskDistribution", [0, 0, 0, 0])
+            kpis.append(("Critical Risk", str(risk_dist[0] if len(risk_dist) > 0 else 0), ""))
+            kpis.append(("High Risk", str(risk_dist[1] if len(risk_dist) > 1 else 0), ""))
+        except Exception:
+            kpis = [
+                ("Risk Score", "N/A", ""),
+                ("Findings", "N/A", ""),
+                ("Compliance Rate", "N/A", ""),
+                ("Audit Status", "Unavailable", ""),
+                ("Critical Risk", "N/A", ""),
+                ("High Risk", "N/A", ""),
+            ]
         for i, (title, value, change) in enumerate(kpis):
             card = self.create_kpi_card(title, value, change)
             row = i // 3
             col = i % 3
-            grid.addWidget(card, row, col)
-        
-        main_layout.addLayout(grid)
-    
+            self.grid.addWidget(card, row, col)
+
+    def setup_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(24, 24, 24, 24)
+
+        header = QLabel("Financial Analytics")
+        header.setStyleSheet(f"font-size: 22px; font-weight: 700; color: {Color.TEXT_PRIMARY}; padding-bottom: 8px;")
+        main_layout.addWidget(header)
+
+        self.grid = QGridLayout()
+        self.grid.setSpacing(16)
+        main_layout.addLayout(self.grid)
+
     def create_kpi_card(self, title, value, change):
-        """Create a KPI information card"""
         card = QFrame()
-        card.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-        card.setStyleSheet("""
-            QFrame {
-                background-color: #F8F9FA;
+        card.setObjectName("KpiCard")
+        card.setStyleSheet(f"""
+            QFrame#KpiCard {{
+                background-color: {Color.BG_CARD};
+                border: 1px solid {Color.BORDER};
                 border-radius: 10px;
-                padding: 15px;
-            }
+                padding: 20px;
+            }}
+            QFrame#KpiCard:hover {{
+                border-color: {Color.INFO};
+            }}
         """)
-        
+        card.setMinimumSize(200, 120)
+
         layout = QVBoxLayout(card)
-        
+        layout.setSpacing(4)
+
         title_label = QLabel(title)
-        title_label.setStyleSheet("font-size: 12px; color: #666;")
+        title_label.setStyleSheet(f"font-size: 11px; color: {Color.TEXT_SECONDARY}; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;")
         layout.addWidget(title_label)
-        
+
         value_label = QLabel(value)
-        value_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #2E86AB;")
+        value_label.setStyleSheet(f"font-size: 24px; font-weight: 700; color: {Color.PRIMARY};")
         layout.addWidget(value_label)
-        
-        change_label = QLabel(change)
-        change_color = "#28A745" if change.startswith('+') else "#DC3545"
-        change_label.setStyleSheet(f"font-size: 14px; color: {change_color};")
-        layout.addWidget(change_label)
-        
+
+        if change:
+            change_color = Color.SUCCESS if change.startswith('+') else Color.ERROR
+            change_label = QLabel(change)
+            change_label.setStyleSheet(f"font-size: 13px; color: {change_color};")
+            layout.addWidget(change_label)
+
         return card
-
-
-if __name__ == "__main__":
-    from PySide6.QtWidgets import QApplication
-    app = QApplication(sys.argv)
-    dashboard = AnalyticsDashboard()
-    dashboard.show()
-    sys.exit(app.exec())

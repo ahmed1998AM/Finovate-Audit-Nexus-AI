@@ -4,20 +4,20 @@ Advanced fraud detection using AI-powered pattern recognition
 Enterprise AI Financial Audit & Intelligence Platform
 """
 
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 from loguru import logger
 
-from backend.agents.enhanced_agent_base import EnhancedAgent, AgentResult
-from backend.ai_engine.llm_interface import LLMMessage
+from backend.agents.enhanced_agent_base import AgentResult, EnhancedAgent
 
 
 class EnhancedFraudDetectionAgent(EnhancedAgent):
     """
     Enhanced Fraud Detection AI Agent
     Uses LLM for intelligent pattern analysis and anomaly detection
-    
+
     Responsibilities:
     - Detect fraud patterns using AI analysis
     - Analyze anomalies in financial data
@@ -26,7 +26,7 @@ class EnhancedFraudDetectionAgent(EnhancedAgent):
     - Provide AI-powered recommendations
     """
 
-    def __init__(self, llm_provider: Optional[str] = None):
+    def __init__(self, llm_provider: Optional[str] = None) -> None:
         """
         Initialize enhanced fraud detection agent
         Args:
@@ -309,26 +309,56 @@ class EnhancedFraudDetectionAgent(EnhancedAgent):
         return "; ".join(summary_parts)
 
     def _create_fraud_analysis_prompt(self, context: Dict[str, Any]) -> str:
-        """Create a prompt for AI fraud analysis"""
-        prompt = f"""
-        You are a financial fraud detection expert. Analyze the following financial data and findings for potential fraud indicators.
-        
-        Financial Data Summary: {context.get('financial_data_summary', '')}
-        
-        Traditional Analysis Results:
-        - Duplicate Entries: {len(context.get('traditional_findings', {}).get('duplicate_entries', []))}
-        - Suspicious Patterns: {len(context.get('traditional_findings', {}).get('suspicious_patterns', []))}
-        - Anomalies: {len(context.get('traditional_findings', {}).get('anomalies', []))}
-        - Risk Score: {context.get('traditional_findings', {}).get('risk_score', 0)}/100
-        
-        Based on this analysis:
-        1. What are the key fraud risk indicators?
-        2. What patterns suggest potential fraudulent activity?
-        3. What recommendations would you make for further investigation?
-        4. What is your confidence level in these findings?
-        
-        Provide a detailed but concise analysis.
-        """
+        """Create a structured prompt for AI fraud analysis"""
+        traditional = context.get('traditional_findings', {})
+        duplicates = traditional.get('duplicate_entries', [])
+        suspicious = traditional.get('suspicious_patterns', [])
+        anomalies = traditional.get('anomalies', [])
+        risk_score = traditional.get('risk_score', 0)
+
+        dup_detail = ""
+        for d in duplicates[:10]:
+            dup_detail += f"  - Entry {d.get('entry_id')}: {d.get('description', 'N/A')} ({d.get('amount', 0)})\n"
+
+        sus_detail = ""
+        for s in suspicious[:10]:
+            sus_detail += f"  - {s.get('description', s.get('pattern', 'N/A'))} (severity: {s.get('severity', 'medium')})\n"
+
+        ano_detail = ""
+        for a in anomalies[:10]:
+            ano_detail += f"  - Transaction {a.get('transaction_id')}: {a.get('amount')} (z-score: {a.get('z_score', 0)}, severity: {a.get('severity', 'medium')})\n"
+
+        prompt = f"""You are a certified forensic accounting expert with 20+ years of experience in fraud detection at multinational financial institutions. Analyze the following data and traditional analysis results.
+
+Role: Senior Fraud Investigator
+Task: Identify fraud indicators and recommend investigation steps
+Format: Provide structured analysis with clear severity levels
+
+FINANCIAL DATA SUMMARY
+{context.get('financial_data_summary', 'No summary provided')}
+
+TRADITIONAL ANALYSIS RESULTS
+- Duplicate Entries Found: {len(duplicates)} (Risk Weight: 10 pts each)
+{dup_detail or '  (none)'}
+- Suspicious Patterns Detected: {len(suspicious)} (Risk Weight: 15 pts each)
+{sus_detail or '  (none)'}
+- Transaction Anomalies: {len(anomalies)} (Risk Weight: 8 pts each)
+{ano_detail or '  (none)'}
+- Overall Traditional Risk Score: {risk_score}/100
+
+Based on the above, provide:
+
+1. KEY RISK INDICATORS (list top 3-5 indicators with severity: HIGH/MEDIUM/LOW)
+
+2. FRAUD PATTERN ASSESSMENT (identify specific patterns suggesting potential fraudulent activity)
+
+3. RECOMMENDED ACTIONS (prioritized list of specific investigation steps with rationale)
+
+4. CONFIDENCE ASSESSMENT (overall confidence: HIGH/MEDIUM/LOW and why)
+
+5. ADDITIONAL DATA NEEDED (what additional information would strengthen the analysis)
+
+Keep analysis concise and actionable. Focus on HIGH and MEDIUM severity items for immediate action."""
         return prompt
 
     def _parse_ai_response(self, response: str) -> Dict[str, Any]:
@@ -393,6 +423,21 @@ class EnhancedFraudDetectionAgent(EnhancedAgent):
         next_steps.extend(ai_insights.get('recommendations', [])[:2])
 
         return next_steps
+
+    # Compatibility methods for orchestrator / ChiefAgent
+    async def detect_fraud(self, financial_data: Any) -> Dict[str, Any]:
+        """Called by AgentOrchestrator and ChiefAgent - delegates to execute()"""
+        kwargs = {"financial_data": financial_data} if isinstance(financial_data, dict) else {"financial_data": {"data": financial_data}}
+        result = await self.execute(**kwargs)
+        return {
+            "agent": self.name,
+            "status": "completed" if getattr(result, 'success', False) else "failed",
+            "timestamp": datetime.now().isoformat(),
+            "findings": getattr(result, 'data', result) or {},
+            "ai_insights": getattr(result, 'ai_insights', None),
+            "confidence_score": getattr(result, 'confidence_score', 0.0),
+            "risk_score": getattr(result, 'data', {}).get('risk_score', 0) if isinstance(getattr(result, 'data', None), dict) else 0,
+        }
 
     # Tool implementations
     async def _analyze_transactions_tool(self, transactions: List[Dict]) -> Dict[str, Any]:

@@ -2,11 +2,16 @@
 Finovate Audit Nexus AI - Generic API Connector
 موصل API عام للأنظمة المالية المخصصة
 """
-import requests
-from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta
-import json
+import logging
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+import requests
+
+from connectors.base_connector import BaseERPConnector
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -24,11 +29,11 @@ class APIConnectionConfig:
     client_secret: str = ''
     refresh_token: str = ''
     token_url: str = ''
-    
+
     def __post_init__(self):
         if self.headers is None:
             self.headers = {}
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """تحويل الإعدادات إلى قاموس"""
         return {
@@ -47,7 +52,7 @@ class APIConnectionConfig:
         }
 
 
-class APIConnector:
+class APIConnector(BaseERPConnector):
     """
     موصل API عام مرن للاتصال بالأنظمة المالية المخصصة
     يدعم REST APIs مع مصادقة متعددة الطرق
@@ -56,7 +61,7 @@ class APIConnector:
     def __init__(self, config: Dict[str, Any]):
         """
         تهيئة موصل API
-        
+
         Args:
             config: إعدادات الاتصال
                 - base_url: الرابط الأساسي
@@ -68,6 +73,7 @@ class APIConnector:
                 - headers: رؤساء مخصصة
                 - timeout: مهلة الطلب
         """
+        super().__init__()
         self.base_url = config.get('base_url', '').rstrip('/')
         self.auth_type = config.get('auth_type', 'none')
         self.api_key = config.get('api_key', '')
@@ -76,27 +82,25 @@ class APIConnector:
         self.password = config.get('password', '')
         self.custom_headers = config.get('headers', {})
         self.timeout = config.get('timeout', 30)
-        
+
         # OAuth2
         self.client_id = config.get('client_id', '')
         self.client_secret = config.get('client_secret', '')
         self.refresh_token = config.get('refresh_token', '')
         self.token_url = config.get('token_url', '')
-        
-        self.connected = False
-        self.last_sync = None
+
         self.token_expiry = None
-    
+
     def _get_headers(self) -> Dict:
         """الحصول على رؤساء الطلب"""
         headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-        
+
         # إضافة الرؤساء المخصصة
         headers.update(self.custom_headers)
-        
+
         # إضافة المصادقة
         if self.auth_type == 'api_key':
             headers['X-API-Key'] = self.api_key
@@ -110,55 +114,55 @@ class APIConnector:
             if not self.access_token or (self.token_expiry and datetime.now() >= self.token_expiry):
                 self._refresh_oauth_token()
             headers['Authorization'] = f'Bearer {self.access_token}'
-        
+
         return headers
-    
+
     def _refresh_oauth_token(self):
         """تحديث رمز OAuth2"""
         if not self.token_url:
             raise Exception("token_url غير محدد")
-        
+
         try:
             data = {
                 'grant_type': 'client_credentials',
                 'client_id': self.client_id,
                 'client_secret': self.client_secret
             }
-            
+
             if self.refresh_token:
                 data['grant_type'] = 'refresh_token'
                 data['refresh_token'] = self.refresh_token
-            
+
             response = requests.post(self.token_url, data=data, timeout=self.timeout)
             response.raise_for_status()
-            
+
             result = response.json()
             self.access_token = result['access_token']
             expires_in = result.get('expires_in', 3600)
             self.token_expiry = datetime.now() + timedelta(seconds=expires_in)
-            self.connected = True
-            
+            self._connected = True
+
         except Exception as e:
-            print(f"خطأ في تحديث رمز OAuth2: {str(e)}")
-            self.connected = False
+            logger.error("خطأ في تحديث رمز OAuth2: %s", e)
+            self._connected = False
             raise
-    
+
     def _request(self, method: str, endpoint: str, params: Optional[Dict] = None, data: Optional[Dict] = None) -> Dict:
         """
         تنفيذ طلب API
-        
+
         Args:
             method: نوع الطلب (GET, POST, PUT, DELETE)
             endpoint: نقطة النهاية
             params: معاملات الاستعلام
             data: بيانات الجسم
-            
+
         Returns:
             Dict: النتيجة
         """
         url = f"{self.base_url}/{endpoint}"
         headers = self._get_headers()
-        
+
         try:
             response = requests.request(
                 method,
@@ -168,28 +172,28 @@ class APIConnector:
                 json=data,
                 timeout=self.timeout
             )
-            
+
             response.raise_for_status()
-            
+
             # محاولة تحليل JSON
             try:
                 return response.json()
-            except:
+            except ValueError:
                 return {'data': response.text}
-            
+
         except requests.exceptions.HTTPError as e:
-            print(f"خطأ HTTP {e.response.status_code}: {e.response.text}")
+            logger.error("خطأ HTTP %s: %s", e.response.status_code, e.response.text)
             if e.response.status_code == 401 and self.auth_type == 'oauth2':
                 # محاولة تحديث الرمز وإعادة الطلب
                 self._refresh_oauth_token()
                 return self._request(method, endpoint, params, data)
             raise
         except Exception as e:
-            print(f"خطأ في الطلب: {str(e)}")
+            logger.error("خطأ في الطلب: %s", e)
             raise
-    
+
     # ==================== طرق عامة قابلة للتخصيص ====================
-    
+
     def get_journal_entries(
         self,
         endpoint: str = 'journal-entries',
@@ -199,26 +203,26 @@ class APIConnector:
     ) -> List[Dict]:
         """
         جلب قيود اليومية
-        
+
         Args:
             endpoint: نقطة النهاية
             date_from: تاريخ البدء
             date_to: تاريخ الانتهاء
             params: معاملات إضافية
-            
+
         Returns:
             List[Dict]: قائمة القيود
         """
         query_params = params or {}
-        
+
         if date_from:
             query_params['date_from'] = date_from
         if date_to:
             query_params['date_to'] = date_to
-        
+
         try:
             result = self._request('GET', endpoint, query_params)
-            
+
             # محاولة استخراج البيانات من استجابات مختلفة
             entries = []
             if isinstance(result, dict):
@@ -231,7 +235,7 @@ class APIConnector:
                     entries = result['journal_entries']
             elif isinstance(result, list):
                 entries = result
-            
+
             # توحيد التنسيق
             standardized = []
             for entry in entries:
@@ -243,13 +247,13 @@ class APIConnector:
                     'amount': entry.get('amount') or entry.get('Amount') or entry.get('total', 0),
                     'lines': entry.get('lines') or entry.get('Lines') or entry.get('details', [])
                 })
-            
+
             return standardized
-            
+
         except Exception as e:
-            print(f"خطأ في جلب القيود: {str(e)}")
+            logger.error("خطأ في جلب القيود: %s", e)
             return []
-    
+
     def get_trial_balance(
         self,
         endpoint: str = 'trial-balance',
@@ -258,17 +262,17 @@ class APIConnector:
     ) -> List[Dict]:
         """
         جلب ميزان المراجعة
-        
+
         Returns:
             List[Dict]: ميزان المراجعة
         """
         query_params = params or {}
         if date:
             query_params['date'] = date
-        
+
         try:
             result = self._request('GET', endpoint, query_params)
-            
+
             balances = []
             if isinstance(result, dict):
                 for key in ['balances', 'data', 'records', 'trial_balance', 'accounts']:
@@ -277,7 +281,7 @@ class APIConnector:
                         break
             elif isinstance(result, list):
                 balances = result
-            
+
             standardized = []
             for bal in balances:
                 standardized.append({
@@ -287,13 +291,13 @@ class APIConnector:
                     'credit': float(bal.get('credit') or bal.get('Credit') or 0),
                     'balance': float(bal.get('balance') or bal.get('Balance') or 0)
                 })
-            
+
             return standardized
-            
+
         except Exception as e:
-            print(f"خطأ في جلب ميزان المراجعة: {str(e)}")
+            logger.error("خطأ في جلب ميزان المراجعة: %s", e)
             return []
-    
+
     def get_financial_statements(
         self,
         income_endpoint: str = 'income-statement',
@@ -304,7 +308,7 @@ class APIConnector:
     ) -> Dict:
         """
         جلب القوائم المالية
-        
+
         Returns:
             Dict: القوائم المالية
         """
@@ -313,32 +317,32 @@ class APIConnector:
             'balance_sheet': [],
             'cash_flow': []
         }
-        
+
         params = {}
         if date_from:
             params['from_date'] = date_from
         if date_to:
             params['to_date'] = date_to
-        
+
         try:
             # قائمة الدخل
             pl_result = self._request('GET', income_endpoint, params)
             result['income_statement'] = pl_result.get('data') or pl_result.get('statement') or pl_result
-            
+
             # الميزانية
             bs_result = self._request('GET', balance_endpoint, params)
             result['balance_sheet'] = bs_result.get('data') or bs_result.get('statement') or bs_result
-            
+
             # التدفقات النقدية
             cf_result = self._request('GET', cashflow_endpoint, params)
             result['cash_flow'] = cf_result.get('data') or cf_result.get('statement') or cf_result
-            
+
             return result
-            
+
         except Exception as e:
-            print(f"خطأ في جلب القوائم المالية: {str(e)}")
+            logger.error("خطأ في جلب القوائم المالية: %s", e)
             return result
-    
+
     def get_invoices(
         self,
         endpoint: str = 'invoices',
@@ -349,22 +353,22 @@ class APIConnector:
     ) -> List[Dict]:
         """
         جلب الفواتير
-        
+
         Returns:
             List[Dict]: قائمة الفواتير
         """
         query_params = params or {}
-        
+
         if status:
             query_params['status'] = status
         if date_from:
             query_params['date_from'] = date_from
         if date_to:
             query_params['date_to'] = date_to
-        
+
         try:
             result = self._request('GET', endpoint, query_params)
-            
+
             invoices = []
             if isinstance(result, dict):
                 for key in ['invoices', 'data', 'records', 'result']:
@@ -373,7 +377,7 @@ class APIConnector:
                         break
             elif isinstance(result, list):
                 invoices = result
-            
+
             standardized = []
             for inv in invoices:
                 standardized.append({
@@ -387,13 +391,13 @@ class APIConnector:
                     'balance': inv.get('balance') or inv.get('amount_due', 0),
                     'status': inv.get('status') or inv.get('state')
                 })
-            
+
             return standardized
-            
+
         except Exception as e:
-            print(f"خطأ في جلب الفواتير: {str(e)}")
+            logger.error("خطأ في جلب الفواتير: %s", e)
             return []
-    
+
     def get_customers(
         self,
         endpoint: str = 'customers',
@@ -402,7 +406,7 @@ class APIConnector:
         """جلب العملاء"""
         try:
             result = self._request('GET', endpoint, params)
-            
+
             customers = []
             if isinstance(result, dict):
                 for key in ['customers', 'data', 'records', 'clients']:
@@ -411,7 +415,7 @@ class APIConnector:
                         break
             elif isinstance(result, list):
                 customers = result
-            
+
             standardized = []
             for cust in customers:
                 standardized.append({
@@ -421,13 +425,13 @@ class APIConnector:
                     'phone': cust.get('phone'),
                     'balance': cust.get('balance') or cust.get('outstanding', 0)
                 })
-            
+
             return standardized
-            
+
         except Exception as e:
-            print(f"خطأ في جلب العملاء: {str(e)}")
+            logger.error("خطأ في جلب العملاء: %s", e)
             return []
-    
+
     def get_accounts(
         self,
         endpoint: str = 'accounts',
@@ -436,7 +440,7 @@ class APIConnector:
         """جلب دليل الحسابات"""
         try:
             result = self._request('GET', endpoint, params)
-            
+
             accounts = []
             if isinstance(result, dict):
                 for key in ['accounts', 'data', 'records', 'chart_of_accounts']:
@@ -445,7 +449,7 @@ class APIConnector:
                         break
             elif isinstance(result, list):
                 accounts = result
-            
+
             standardized = []
             for acc in accounts:
                 standardized.append({
@@ -455,41 +459,41 @@ class APIConnector:
                     'type': acc.get('type') or acc.get('account_type'),
                     'balance': acc.get('balance') or acc.get('current_balance', 0)
                 })
-            
+
             return standardized
-            
+
         except Exception as e:
-            print(f"خطأ في جلب الحسابات: {str(e)}")
+            logger.error("خطأ في جلب الحسابات: %s", e)
             return []
-    
+
     # ==================== معلومات النظام ====================
-    
+
     def get_system_info(self, endpoint: str = 'system/info') -> Dict:
         """جلب معلومات النظام"""
         try:
             result = self._request('GET', endpoint)
-            
+
             return {
                 'erp_type': 'Custom API',
                 'base_url': self.base_url,
                 'auth_type': self.auth_type,
-                'connected': self.connected,
+                'connected': self._connected,
                 'last_sync': self.last_sync.isoformat() if self.last_sync else None,
                 'system_info': result
             }
-            
+
         except Exception as e:
             return {'error': str(e), 'connected': False}
-    
+
     # ==================== المزامنة ====================
-    
+
     def sync_all(self, endpoints: Optional[Dict[str, str]] = None) -> Dict[str, int]:
         """
         مزامنة جميع البيانات
-        
+
         Args:
             endpoints: قاموس بنقاط النهاية المخصصة
-            
+
         Returns:
             Dict: عدد العناصر المزامنة
         """
@@ -501,42 +505,42 @@ class APIConnector:
                 'customers': 'customers',
                 'accounts': 'accounts'
             }
-        
+
         synced = {}
-        
+
         try:
             # جلب القيود
             entries = self.get_journal_entries(endpoint=endpoints.get('journal_entries', 'journal-entries'))
             synced['journal_entries_count'] = len(entries)
-            
+
             # جلب الفواتير
             invoices = self.get_invoices(endpoint=endpoints.get('invoices', 'invoices'))
             synced['invoices_count'] = len(invoices)
-            
+
             # جلب العملاء
             customers = self.get_customers(endpoint=endpoints.get('customers', 'customers'))
             synced['customers_count'] = len(customers)
-            
+
             # جلب الحسابات
             accounts = self.get_accounts(endpoint=endpoints.get('accounts', 'accounts'))
             synced['accounts_count'] = len(accounts)
-            
+
             self.last_sync = datetime.now()
-            
+
         except Exception as e:
-            print(f"خطأ في المزامنة: {str(e)}")
-        
+            logger.error("خطأ في المزامنة: %s", e)
+
         return synced
-    
+
     # ==================== اختبار الاتصال ====================
-    
+
     def test_connection(self, test_endpoint: str = 'health') -> Dict:
         """
         اختبار الاتصال
-        
+
         Args:
             test_endpoint: نقطة نهاية الاختبار
-            
+
         Returns:
             Dict: نتيجة الاختبار
         """
@@ -545,7 +549,7 @@ class APIConnector:
             'message': '',
             'details': {}
         }
-        
+
         try:
             # محاولة الاتصال بنقطة الاختبار
             try:
@@ -553,7 +557,7 @@ class APIConnector:
                 result['success'] = True
                 result['message'] = 'اتصال ناجح'
                 result['details'] = info
-            except:
+            except Exception:
                 # إذا فشلت نقطة الاختبار، محاولة جلب البيانات الأساسية
                 try:
                     self.get_accounts(params={'limit': 1})
@@ -562,58 +566,51 @@ class APIConnector:
                     result['details'] = {'test_method': 'accounts_endpoint'}
                 except Exception as e:
                     result['message'] = str(e)
-            
+
             return result
-            
+
         except Exception as e:
             result['message'] = str(e)
             return result
-    
+
     # ==================== إدارة الاتصال ====================
-    
+
     def connect(self) -> bool:
         """
         إنشاء الاتصال
-        
+
         Returns:
             bool: True إذا نجح الاتصال
         """
         try:
             result = self.test_connection()
-            self.connected = result.get('success', False)
-            if self.connected:
+            self._connected = result.get('success', False)
+            if self._connected:
                 self.last_sync = datetime.now()
-            return self.connected
+            return self._connected
         except Exception as e:
-            print(f"خطأ في الاتصال: {str(e)}")
-            self.connected = False
+            logger.error("خطأ في الاتصال: %s", e)
+            self._connected = False
             return False
-    
+
     def disconnect(self):
         """قطع الاتصال"""
-        self.connected = False
+        self._connected = False
         self.access_token = None
         self.token_expiry = None
-        print("تم قطع الاتصال بنجاح")
-    
-    def is_connected(self) -> bool:
-        """
-        التحقق من حالة الاتصال
-        
-        Returns:
-            bool: حالة الاتصال
-        """
-        return self.connected
+        logger.info("تم قطع الاتصال بنجاح")
+
+
 
 
 # دالة مساعدة لإنشاء الموصل
 def create_api_connector(config: Dict[str, Any]) -> APIConnector:
     """
     إنشاء موصل API مخصص
-    
+
     Args:
         config: إعدادات الاتصال
-        
+
     Returns:
         APIConnector: موصل جاهز
     """

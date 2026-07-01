@@ -4,17 +4,16 @@ Finovate Audit Nexus AI - Logger Module
 Centralized logging configuration for the entire application
 """
 
+import json
 import logging
 import sys
-from pathlib import Path
 from datetime import datetime
-from typing import Optional
-import json
+from pathlib import Path
 
 
 class FinovateLogger:
     """Custom logger class for Finovate Audit Nexus AI"""
-    
+
     def __init__(
         self,
         name: str = "finovate",
@@ -28,17 +27,17 @@ class FinovateLogger:
         self.log_dir = Path(log_dir)
         self.max_size_mb = max_size_mb
         self.retention_days = retention_days
-        
+
         # Create log directory if it doesn't exist
         self.log_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Setup logger
         self.logger = logging.getLogger(name)
         self.logger.setLevel(self.log_level)
-        
+
         # Clear existing handlers
         self.logger.handlers.clear()
-        
+
         # Console handler
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(self.log_level)
@@ -48,7 +47,7 @@ class FinovateLogger:
         )
         console_handler.setFormatter(console_formatter)
         self.logger.addHandler(console_handler)
-        
+
         # File handler
         log_file = self.log_dir / f"{name}_{datetime.now().strftime('%Y%m%d')}.log"
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
@@ -59,12 +58,12 @@ class FinovateLogger:
         )
         file_handler.setFormatter(file_formatter)
         self.logger.addHandler(file_handler)
-        
+
         # JSON handler for structured logging
         json_log_file = self.log_dir / f"{name}_json_{datetime.now().strftime('%Y%m%d')}.log"
         self.json_handler = logging.FileHandler(json_log_file, encoding='utf-8')
         self.json_handler.setLevel(self.log_level)
-    
+
     def _log_json(self, level: str, message: str, **kwargs):
         """Log message in JSON format"""
         log_entry = {
@@ -85,37 +84,37 @@ class FinovateLogger:
                 exc_info=None
             )
         )
-    
+
     def info(self, message: str, **kwargs):
         """Log info message"""
         self.logger.info(message)
         if kwargs:
             self._log_json("INFO", message, **kwargs)
-    
+
     def warning(self, message: str, **kwargs):
         """Log warning message"""
         self.logger.warning(message)
         if kwargs:
             self._log_json("WARNING", message, **kwargs)
-    
+
     def error(self, message: str, exc_info: bool = False, **kwargs):
         """Log error message"""
         self.logger.error(message, exc_info=exc_info)
         if kwargs:
             self._log_json("ERROR", message, exc_info=exc_info, **kwargs)
-    
+
     def debug(self, message: str, **kwargs):
         """Log debug message"""
         self.logger.debug(message)
         if kwargs:
             self._log_json("DEBUG", message, **kwargs)
-    
+
     def critical(self, message: str, exc_info: bool = False, **kwargs):
         """Log critical message"""
         self.logger.critical(message, exc_info=exc_info)
         if kwargs:
             self._log_json("CRITICAL", message, exc_info=exc_info, **kwargs)
-    
+
     def audit(self, action: str, user: str, details: dict = None):
         """Log audit trail"""
         self.info(
@@ -134,12 +133,12 @@ def setup_logger(
 ) -> FinovateLogger:
     """
     Setup and return a logger instance
-    
+
     Args:
         name: Logger name
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_dir: Directory to store log files
-    
+
     Returns:
         FinovateLogger instance
     """

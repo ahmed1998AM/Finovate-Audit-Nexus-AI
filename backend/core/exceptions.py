@@ -7,13 +7,13 @@ Custom exceptions for the entire application
 
 class FinovateError(Exception):
     """Base exception for Finovate Audit Nexus AI"""
-    
+
     def __init__(self, message: str, code: str = None, details: dict = None):
         self.message = message
         self.code = code or "FINOVATE_ERROR"
         self.details = details or {}
         super().__init__(self.message)
-    
+
     def to_dict(self) -> dict:
         """Convert exception to dictionary"""
         return {
@@ -26,7 +26,7 @@ class FinovateError(Exception):
 
 class ConnectionError(FinovateError):
     """Exception raised when connection fails"""
-    
+
     def __init__(self, message: str, service: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -37,7 +37,7 @@ class ConnectionError(FinovateError):
 
 class AuthenticationError(FinovateError):
     """Exception raised when authentication fails"""
-    
+
     def __init__(self, message: str, provider: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -48,7 +48,7 @@ class AuthenticationError(FinovateError):
 
 class AuthorizationError(FinovateError):
     """Exception raised when authorization fails"""
-    
+
     def __init__(self, message: str, resource: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -59,7 +59,7 @@ class AuthorizationError(FinovateError):
 
 class DataValidationError(FinovateError):
     """Exception raised when data validation fails"""
-    
+
     def __init__(self, message: str, field: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -70,7 +70,7 @@ class DataValidationError(FinovateError):
 
 class AIProcessingError(FinovateError):
     """Exception raised when AI processing fails"""
-    
+
     def __init__(self, message: str, model: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -81,7 +81,7 @@ class AIProcessingError(FinovateError):
 
 class OCRProcessingError(FinovateError):
     """Exception raised when OCR processing fails"""
-    
+
     def __init__(self, message: str, document: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -92,7 +92,7 @@ class OCRProcessingError(FinovateError):
 
 class FileProcessingError(FinovateError):
     """Exception raised when file processing fails"""
-    
+
     def __init__(self, message: str, filename: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -103,7 +103,7 @@ class FileProcessingError(FinovateError):
 
 class DatabaseError(FinovateError):
     """Exception raised when database operation fails"""
-    
+
     def __init__(self, message: str, operation: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -114,7 +114,7 @@ class DatabaseError(FinovateError):
 
 class ConnectorError(FinovateError):
     """Exception raised when ERP connector fails"""
-    
+
     def __init__(self, message: str, connector: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -125,7 +125,7 @@ class ConnectorError(FinovateError):
 
 class ComplianceError(FinovateError):
     """Exception raised when compliance check fails"""
-    
+
     def __init__(self, message: str, standard: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -136,7 +136,7 @@ class ComplianceError(FinovateError):
 
 class FraudDetectionError(FinovateError):
     """Exception raised when fraud detection fails"""
-    
+
     def __init__(self, message: str, rule: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -147,7 +147,7 @@ class FraudDetectionError(FinovateError):
 
 class ReportGenerationError(FinovateError):
     """Exception raised when report generation fails"""
-    
+
     def __init__(self, message: str, report_type: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -158,7 +158,7 @@ class ReportGenerationError(FinovateError):
 
 class ConfigurationError(FinovateError):
     """Exception raised when configuration is invalid"""
-    
+
     def __init__(self, message: str, setting: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -169,7 +169,7 @@ class ConfigurationError(FinovateError):
 
 class AgentExecutionError(FinovateError):
     """Exception raised when AI agent execution fails"""
-    
+
     def __init__(self, message: str, agent: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -180,7 +180,7 @@ class AgentExecutionError(FinovateError):
 
 class WorkflowError(FinovateError):
     """Exception raised when workflow execution fails"""
-    
+
     def __init__(self, message: str, workflow: str = None, details: dict = None):
         super().__init__(
             message=message,
@@ -191,7 +191,7 @@ class WorkflowError(FinovateError):
 
 class SecurityError(FinovateError):
     """Exception raised when security check fails"""
-    
+
     def __init__(self, message: str, violation_type: str = None, details: dict = None):
         super().__init__(
             message=message,

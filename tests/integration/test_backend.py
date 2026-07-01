@@ -4,14 +4,15 @@ Backend Module Tests
 Test all backend modules including API, security, and core utilities.
 """
 
+import os
 import pytest
 import sys
 from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime, timedelta
 import json
 
-# Add parent directory to path
-sys.path.insert(0, '/workspace/backend')
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 
 class TestAPIEndpoints:

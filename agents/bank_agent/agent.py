@@ -7,13 +7,11 @@ Developed By: Ahmed Mostafa Ibrahim
 © 2025 Finovate – AHMED EG - All Rights Reserved
 """
 
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Any, Optional, Tuple
-from datetime import datetime, timedelta
 from dataclasses import dataclass, field
-import hashlib
-import re
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
 
 
 @dataclass
@@ -59,7 +57,7 @@ class SuspiciousActivity:
 class BankAuditAgent:
     """
     وكيل مراجعة البنوك والخزينة
-    
+
     المهام:
     - مطابقة البنوك (Bank Reconciliation)
     - كشف الحركات المشبوهة
@@ -67,32 +65,32 @@ class BankAuditAgent:
     - تحليل التدفقات النقدية
     - مراجعة التسويات البنكية
     """
-    
+
     def __init__(self, config: Optional[Dict] = None):
         self.config = config or {}
         self.name = "Bank & Treasury Audit Agent"
         self.version = "1.0.0"
         self.suspicious_activities: List[SuspiciousActivity] = []
         self.reconciliation_items: List[BankReconciliationItem] = []
-        
+
         # عتبات الكشف
         self.large_transaction_threshold = self.config.get('large_transaction_threshold', 100000)
         self.round_amount_threshold = self.config.get('round_amount_threshold', 10000)
         self.frequency_window_days = self.config.get('frequency_window_days', 7)
         self.same_amount_threshold = self.config.get('same_amount_threshold', 3)
-        
+
     def analyze_bank_statement(
-        self, 
+        self,
         bank_statement: pd.DataFrame,
         bank_name: str = "Unknown Bank"
     ) -> Dict[str, Any]:
         """
         تحليل كشف حساب بنكي شامل
-        
+
         Args:
             bank_statement: DataFrame يحتوي على حركات البنك
             bank_name: اسم البنك
-            
+
         Returns:
             تقرير تحليل شامل
         """
@@ -105,67 +103,67 @@ class BankAuditAgent:
             'cash_flow_analysis': {},
             'recommendations': []
         }
-        
+
         # التحقق من البيانات المطلوبة
         required_columns = ['date', 'amount', 'description']
         missing_cols = [col for col in required_columns if col not in bank_statement.columns]
-        
+
         if missing_cols:
             return {
                 'status': 'error',
                 'message': f'Missing required columns: {missing_cols}',
                 'results': results
             }
-        
+
         # تحويل التواريخ
         bank_statement['date'] = pd.to_datetime(bank_statement['date'])
-        
+
         # التحليل الأساسي
         results['summary'] = self._calculate_bank_summary(bank_statement)
-        
+
         # مطابقة البنك
         results['reconciliation'] = self._perform_bank_reconciliation(bank_statement)
-        
+
         # كشف الأنشطة المشبوهة
         suspicious = self._detect_suspicious_activities(bank_statement)
         results['suspicious_activities'] = [vars(s) for s in suspicious]
         self.suspicious_activities.extend(suspicious)
-        
+
         # تحليل التدفق النقدي
         results['cash_flow_analysis'] = self._analyze_cash_flow(bank_statement)
-        
+
         # التوصيات
         results['recommendations'] = self._generate_bank_recommendations(
             results['summary'],
             suspicious,
             results['reconciliation']
         )
-        
+
         return {
             'status': 'success',
             'message': f'Bank analysis completed for {bank_name}',
             'results': results
         }
-    
+
     def _calculate_bank_summary(self, df: pd.DataFrame) -> Dict[str, Any]:
         """حساب ملخص إحصائيات البنك"""
-        
+
         total_transactions = len(df)
         total_deposits = df[df['amount'] > 0]['amount'].sum()
         total_withdrawals = abs(df[df['amount'] < 0]['amount'].sum())
         net_flow = total_deposits - total_withdrawals
-        
+
         avg_transaction = df['amount'].abs().mean()
         max_transaction = df['amount'].abs().max()
         min_transaction = df['amount'].abs().min()
-        
+
         # تحليل حسب النوع
         transaction_types = df['transaction_type'].value_counts().to_dict() if 'transaction_type' in df.columns else {}
-        
+
         # أكبر 10 معاملات
         top_10_deposits = df.nlargest(10, 'amount')[['date', 'amount', 'description']].to_dict('records') if 'amount' in df.columns else []
         top_10_withdrawals = df.nsmallest(10, 'amount')[['date', 'amount', 'description']].to_dict('records') if 'amount' in df.columns else []
-        
+
         return {
             'total_transactions': int(total_transactions),
             'total_deposits': float(total_deposits),
@@ -183,41 +181,41 @@ class BankAuditAgent:
                 'days_covered': (df['date'].max() - df['date'].min()).days if 'date' in df.columns else 0
             }
         }
-    
+
     def _perform_bank_reconciliation(
-        self, 
+        self,
         bank_statement: pd.DataFrame,
         ledger_data: Optional[pd.DataFrame] = None
     ) -> List[Dict[str, Any]]:
         """
         إجراء مطابقة بنكية
-        
+
         Args:
             bank_statement: كشف الحساب البنكي
             ledger_data: بيانات دفتر الأستاذ للمقارنة
-            
+
         Returns:
             قائمة بنتائج المطابقة
         """
         reconciliation_results = []
-        
+
         if ledger_data is None:
             # مطابقة داخلية فقط
             reconciliation_results = self._internal_reconciliation(bank_statement)
         else:
             # مطابقة بين البنك والدفتر
             reconciliation_results = self._external_reconciliation(bank_statement, ledger_data)
-        
+
         return reconciliation_results
-    
+
     def _internal_reconciliation(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
         """مطابقة داخلية لكشف الحساب"""
-        
+
         results = []
-        
+
         # كشف المعاملات المكررة المحتملة
         duplicates = self._find_duplicate_transactions(df)
-        
+
         for idx, dup_group in enumerate(duplicates):
             rec_item = {
                 'reconciliation_id': f'REC-INT-{idx+1:04d}',
@@ -231,45 +229,43 @@ class BankAuditAgent:
                 'recommended_action': 'Review transactions for actual duplication'
             }
             results.append(rec_item)
-        
+
         # كشف الفروقات الزمنية غير الطبيعية
         timing_issues = self._detect_timing_anomalies(df)
         results.extend(timing_issues)
-        
+
         return results
-    
+
     def _external_reconciliation(
-        self, 
-        bank_df: pd.DataFrame, 
+        self,
+        bank_df: pd.DataFrame,
         ledger_df: pd.DataFrame
     ) -> List[Dict[str, Any]]:
         """مطابقة بين البنك ودفتر الأستاذ"""
-        
+
         results = []
-        
+
         # تطابق بناءً على المبلغ والتاريخ
         bank_df_copy = bank_df.copy()
         ledger_df_copy = ledger_df.copy()
-        
+
         bank_df_copy['date'] = pd.to_datetime(bank_df_copy['date'])
         ledger_df_copy['date'] = pd.to_datetime(ledger_df_copy['date'])
-        
+
         matched_count = 0
         unmatched_bank = []
-        unmatched_ledger = []
-        
         # خوارزمية المطابقة
         for bank_idx, bank_row in bank_df_copy.iterrows():
             matched = False
-            
+
             for ledger_idx, ledger_row in ledger_df_copy.iterrows():
                 # التحقق من التطابق في المبلغ (مع هامش خطأ بسيط)
                 amount_match = abs(abs(bank_row['amount']) - abs(ledger_row['amount'])) < 0.01
-                
+
                 # التحقق من التطابق في التاريخ (±3 أيام)
                 date_diff = abs((bank_row['date'] - ledger_row['date']).days)
                 date_match = date_diff <= 3
-                
+
                 if amount_match and date_match:
                     # تم التطابق
                     rec_item = {
@@ -289,10 +285,10 @@ class BankAuditAgent:
                     matched_count += 1
                     matched = True
                     break
-            
+
             if not matched:
                 unmatched_bank.append(bank_row)
-        
+
         # إضافة المعاملات غير المطابقة
         for idx, row in enumerate(unmatched_bank):
             rec_item = {
@@ -307,20 +303,20 @@ class BankAuditAgent:
                 'recommended_action': 'Investigate and record in ledger if valid'
             }
             results.append(rec_item)
-        
+
         return results
-    
+
     def _find_duplicate_transactions(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
         """كشف المعاملات المكررة"""
-        
+
         duplicates = []
-        
+
         # تجميع حسب المبلغ والتاريخ
         df_copy = df.copy()
         df_copy['date_only'] = df_copy['date'].dt.date
-        
+
         grouped = df_copy.groupby(['amount', 'date_only'])
-        
+
         for (amount, date), group in grouped:
             if len(group) > 1:
                 duplicates.append({
@@ -329,26 +325,26 @@ class BankAuditAgent:
                     'dates': [row['date'] for _, row in group.iterrows()],
                     'count': len(group)
                 })
-        
+
         return duplicates
-    
+
     def _detect_timing_anomalies(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
         """كشف الشذوذ الزمني"""
-        
+
         anomalies = []
-        
+
         if len(df) < 2:
             return anomalies
-        
+
         df_sorted = df.sort_values('date').reset_index(drop=True)
-        
+
         for i in range(1, len(df_sorted)):
             time_diff = (df_sorted.loc[i, 'date'] - df_sorted.loc[i-1, 'date']).total_seconds()
-            
+
             # معاملات متتالية بنفس المبلغ في وقت قصير جداً
             if (time_diff < 60 and  # أقل من دقيقة
                 abs(df_sorted.loc[i, 'amount']) == abs(df_sorted.loc[i-1, 'amount'])):
-                
+
                 anomalies.append({
                     'reconciliation_id': f'REC-TIME-{len(anomalies)+1:04d}',
                     'type': 'timing_anomaly',
@@ -359,13 +355,13 @@ class BankAuditAgent:
                     'description': f'Two identical transactions within {time_diff:.0f} seconds',
                     'recommended_action': 'Verify if this is a system error or duplicate processing'
                 })
-        
+
         return anomalies
-    
+
     def _detect_suspicious_activities(self, df: pd.DataFrame) -> List[SuspiciousActivity]:
         """
         كشف الأنشطة المشبوهة
-        
+
         أنواع الأنشطة المشبوهة:
         - معاملات كبيرة جداً
         - مبالغ مدورة بشكل مشبوه
@@ -373,39 +369,39 @@ class BankAuditAgent:
         - أنماط غسيل أموال محتملة
         - تحويلات إلى أطراف مشبوهة
         """
-        
+
         suspicious = []
-        
+
         # 1. كشف المعاملات الكبيرة جداً
         large_txns = self._detect_large_transactions(df)
         suspicious.extend(large_txns)
-        
+
         # 2. كشف المبالغ المدورة المشبوهة
         round_amounts = self._detect_round_amounts(df)
         suspicious.extend(round_amounts)
-        
+
         # 3. كشف التكرار غير الطبيعي
         frequency_patterns = self._detect_unusual_frequency(df)
         suspicious.extend(frequency_patterns)
-        
+
         # 4. كشف أنماط غسيل الأموال (Structuring/Smurfing)
         structuring = self._detect_structuring(df)
         suspicious.extend(structuring)
-        
+
         # 5. كشف المعاملات في أوقات غير عادية
         odd_time_txns = self._detect_odd_time_transactions(df)
         suspicious.extend(odd_time_txns)
-        
+
         return suspicious
-    
+
     def _detect_large_transactions(self, df: pd.DataFrame) -> List[SuspiciousActivity]:
         """كشف المعاملات الكبيرة جداً"""
-        
+
         activities = []
         threshold = self.large_transaction_threshold
-        
+
         large_txns = df[df['amount'].abs() > threshold]
-        
+
         if len(large_txns) > 0:
             activity = SuspiciousActivity(
                 activity_id=f'SUSP-LARGE-{len(activities)+1:04d}',
@@ -421,21 +417,21 @@ class BankAuditAgent:
                 recommended_action='Review source and purpose of large transactions'
             )
             activities.append(activity)
-        
+
         return activities
-    
+
     def _detect_round_amounts(self, df: pd.DataFrame) -> List[SuspiciousActivity]:
         """كشف المبالغ المدورة المشبوهة"""
-        
+
         activities = []
         threshold = self.round_amount_threshold
-        
+
         # كشف المبالغ التي تنتهي بأصفار متعددة
         round_txns = df[
-            (df['amount'].abs() >= threshold) & 
+            (df['amount'].abs() >= threshold) &
             (df['amount'].abs() % 10000 == 0)
         ]
-        
+
         if len(round_txns) > 0:
             activity = SuspiciousActivity(
                 activity_id=f'SUSP-ROUND-{len(activities)+1:04d}',
@@ -451,26 +447,26 @@ class BankAuditAgent:
                 recommended_action='Investigate the nature of these round-amount transactions'
             )
             activities.append(activity)
-        
+
         return activities
-    
+
     def _detect_unusual_frequency(self, df: pd.DataFrame) -> List[SuspiciousActivity]:
         """كشف التكرار غير الطبيعي"""
-        
+
         activities = []
-        
+
         # تحليل التكرار اليومي
         df_copy = df.copy()
         df_copy['date_only'] = df_copy['date'].dt.date
-        
+
         daily_counts = df_copy.groupby('date_only').size()
         avg_daily = daily_counts.mean()
         std_daily = daily_counts.std()
-        
+
         # الأيام ذات النشاط غير الطبيعي
         if std_daily > 0:
             unusual_days = daily_counts[daily_counts > avg_daily + 2 * std_daily]
-            
+
             if len(unusual_days) > 0:
                 activity = SuspiciousActivity(
                     activity_id=f'SUSP-FREQ-{len(activities)+1:04d}',
@@ -486,40 +482,40 @@ class BankAuditAgent:
                     recommended_action='Review business justification for high-frequency days'
                 )
                 activities.append(activity)
-        
+
         return activities
-    
+
     def _detect_structuring(self, df: pd.DataFrame) -> List[SuspiciousActivity]:
         """
         كشف أنماط غسيل الأموال (Structuring/Smurfing)
-        
+
         Structuring: تقسيم المعاملات الكبيرة إلى معاملات صغيرة لتجنب التقارير الإلزامية
         """
-        
+
         activities = []
-        
+
         # البحث عن مجموعات من المعاملات الصغيرة المتقاربة في الوقت والمبلغ
         df_copy = df.copy()
         df_copy['date_only'] = df_copy['date'].dt.date
-        
+
         # عتبة التقارير الإلزامية (مثلاً 50,000 جنيه)
         reporting_threshold = 50000
-        
+
         for date in df_copy['date_only'].unique():
             day_txns = df_copy[df_copy['date_only'] == date]
-            
+
             # معاملات أقل بقليل من عتبة التقرير
             suspicious_range_min = reporting_threshold * 0.5
             suspicious_range_max = reporting_threshold * 0.95
-            
+
             structuring_candidates = day_txns[
                 (day_txns['amount'].abs() >= suspicious_range_min) &
                 (day_txns['amount'].abs() <= suspicious_range_max)
             ]
-            
+
             if len(structuring_candidates) >= 3:
                 total_amount = structuring_candidates['amount'].abs().sum()
-                
+
                 activity = SuspiciousActivity(
                     activity_id=f'SUSP-STRUCT-{len(activities)+1:04d}',
                     transaction_ids=structuring_candidates.index.tolist(),
@@ -535,21 +531,21 @@ class BankAuditAgent:
                     recommended_action='Immediate investigation required - potential money laundering'
                 )
                 activities.append(activity)
-        
+
         return activities
-    
+
     def _detect_odd_time_transactions(self, df: pd.DataFrame) -> List[SuspiciousActivity]:
         """كشف المعاملات في أوقات غير عادية"""
-        
+
         activities = []
-        
+
         if 'hour' not in df.columns and 'date' in df.columns:
             df['hour'] = pd.to_datetime(df['date']).dt.hour
-        
+
         if 'hour' in df.columns:
             # ساعات العمل العادية: 9 صباحاً - 5 مساءً
             odd_hour_txns = df[(df['hour'] < 9) | (df['hour'] > 17)]
-            
+
             if len(odd_hour_txns) > len(df) * 0.2:  # أكثر من 20%
                 activity = SuspiciousActivity(
                     activity_id=f'SUSP-TIME-{len(activities)+1:04d}',
@@ -565,22 +561,22 @@ class BankAuditAgent:
                     recommended_action='Verify authorization for after-hours transactions'
                 )
                 activities.append(activity)
-        
+
         return activities
-    
+
     def _analyze_cash_flow(self, df: pd.DataFrame) -> Dict[str, Any]:
         """تحليل التدفقات النقدية"""
-        
+
         df_copy = df.copy()
         df_copy['date'] = pd.to_datetime(df_copy['date'])
-        
+
         # تحليل شهري
         df_copy['month'] = df_copy['date'].dt.to_period('M')
-        
+
         # تحليل الاتجاهات
         inflows = df_copy[df_copy['amount'] > 0].groupby('month')['amount'].sum()
         outflows = df_copy[df_copy['amount'] < 0].groupby('month')['amount'].apply(lambda x: abs(x.sum()))
-        
+
         trend = 'stable'
         if len(inflows) > 1:
             inflow_trend = inflows.pct_change().mean()
@@ -589,7 +585,7 @@ class BankAuditAgent:
                     trend = 'increasing'
                 elif inflow_trend < -0.1:
                     trend = 'decreasing'
-        
+
         return {
             'trend': trend,
             'average_monthly_inflow': float(inflows.mean()) if len(inflows) > 0 else 0,
@@ -597,7 +593,7 @@ class BankAuditAgent:
             'volatility': float(df['amount'].std()) if len(df) > 1 else 0,
             'liquidity_ratio': float(inflows.sum() / outflows.sum()) if outflows.sum() > 0 else 0
         }
-    
+
     def _generate_bank_recommendations(
         self,
         summary: Dict[str, Any],
@@ -605,9 +601,9 @@ class BankAuditAgent:
         reconciliation: List[Dict[str, Any]]
     ) -> List[Dict[str, str]]:
         """توليد توصيات بناءً على التحليل"""
-        
+
         recommendations = []
-        
+
         # توصيات عامة
         if summary.get('total_transactions', 0) > 1000:
             recommendations.append({
@@ -616,7 +612,7 @@ class BankAuditAgent:
                 'recommendation': 'High transaction volume detected. Consider automated reconciliation tools.',
                 'impact': 'Efficiency improvement'
             })
-        
+
         # توصيات بناءً على الأنشطة المشبوهة
         high_risk_count = sum(1 for s in suspicious_activities if s.risk_score > 0.7)
         if high_risk_count > 0:
@@ -626,7 +622,7 @@ class BankAuditAgent:
                 'recommendation': f'{high_risk_count} high-risk suspicious activities require immediate investigation.',
                 'impact': 'Fraud prevention'
             })
-        
+
         # توصيات المطابقة
         unmatched_count = sum(1 for r in reconciliation if r.get('status') == 'outstanding')
         if unmatched_count > 0:
@@ -636,7 +632,7 @@ class BankAuditAgent:
                 'recommendation': f'{unmatched_count} unreconciled items need attention.',
                 'impact': 'Financial accuracy'
             })
-        
+
         # توصيات التدفق النقدي
         if summary.get('net_flow', 0) < 0:
             recommendations.append({
@@ -645,9 +641,9 @@ class BankAuditAgent:
                 'recommendation': 'Negative net cash flow detected. Review cash management strategies.',
                 'impact': 'Liquidity management'
             })
-        
+
         return recommendations
-    
+
     def generate_bank_reconciliation_report(
         self,
         bank_name: str,
@@ -656,16 +652,16 @@ class BankAuditAgent:
     ) -> Dict[str, Any]:
         """
         توليد تقرير مطابقة بنكية احترافي
-        
+
         Args:
             bank_name: اسم البنك
             statement_date: تاريخ الكشف
             results: نتائج التحليل
-            
+
         Returns:
             تقرير جاهز للتصدير
         """
-        
+
         report = {
             'report_title': 'Bank Reconciliation Report',
             'report_id': f'BANK-REC-{datetime.now().strftime("%Y%m%d-%H%M%S")}',
@@ -701,44 +697,44 @@ class BankAuditAgent:
                 'confidence_score': self._calculate_confidence_score(results)
             }
         }
-        
+
         return report
-    
+
     def _calculate_overall_risk(self, suspicious_activities: List[SuspiciousActivity]) -> str:
         """حساب مستوى المخاطر العام"""
-        
+
         if not suspicious_activities:
             return 'LOW'
-        
+
         avg_risk = sum(s.risk_score for s in suspicious_activities) / len(suspicious_activities)
         max_risk = max(s.risk_score for s in suspicious_activities)
-        
+
         if max_risk > 0.8 or avg_risk > 0.6:
             return 'HIGH'
         elif max_risk > 0.5 or avg_risk > 0.3:
             return 'MEDIUM'
         else:
             return 'LOW'
-    
+
     def _calculate_confidence_score(self, results: Dict[str, Any]) -> float:
         """حساب درجة الثقة في النتائج"""
-        
+
         score = 1.0
-        
+
         # خصم لعدم اكتمال البيانات
         if results['summary'].get('total_transactions', 0) < 10:
             score -= 0.2
-        
+
         # خصم لوجود أنشطة مشبوهة عالية المخاطر
         high_risk_count = sum(1 for s in self.suspicious_activities if s.risk_score > 0.8)
         score -= high_risk_count * 0.1
-        
+
         # خصم لعدد العناصر غير المطابقة
         unmatched = sum(1 for r in results['reconciliation'] if r.get('status') == 'outstanding')
         score -= min(0.3, unmatched * 0.05)
-        
+
         return max(0.5, min(1.0, score))
-    
+
     def export_reconciliation_to_excel(
         self,
         results: Dict[str, Any],
@@ -746,15 +742,15 @@ class BankAuditAgent:
     ) -> bool:
         """
         تصدير نتائج المطابقة إلى Excel
-        
+
         Args:
             results: نتائج التحليل
             output_path: مسار ملف الإخراج
-            
+
         Returns:
             True إذا نجح التصدير
         """
-        
+
         try:
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
                 # ورقة الملخص
@@ -775,12 +771,12 @@ class BankAuditAgent:
                     'Value': len(results['suspicious_activities'])
                 }])
                 summary_df.to_excel(writer, sheet_name='Summary', index=False)
-                
+
                 # ورقة المطابقات
                 if results['reconciliation']:
                     rec_df = pd.DataFrame(results['reconciliation'])
                     rec_df.to_excel(writer, sheet_name='Reconciliation', index=False)
-                
+
                 # ورقة الأنشطة المشبوهة
                 if results['suspicious_activities']:
                     susp_df = pd.DataFrame([
@@ -794,14 +790,14 @@ class BankAuditAgent:
                         for s in results['suspicious_activities']
                     ])
                     susp_df.to_excel(writer, sheet_name='Suspicious Activities', index=False)
-                
+
                 # ورقة التوصيات
                 if results['recommendations']:
                     rec_df = pd.DataFrame(results['recommendations'])
                     rec_df.to_excel(writer, sheet_name='Recommendations', index=False)
-            
+
             return True
-            
+
         except Exception as e:
             print(f"Error exporting to Excel: {e}")
             return False
@@ -811,7 +807,7 @@ class BankAuditAgent:
 if __name__ == "__main__":
     # إنشاء وكيل مراجعة البنوك
     agent = BankAuditAgent()
-    
+
     # بيانات تجريبية
     sample_data = {
         'date': pd.date_range('2025-01-01', periods=20, freq='D'),
@@ -829,12 +825,12 @@ if __name__ == "__main__":
             -70000, 180000, -95000, 65000, -35000
         ]]
     }
-    
+
     df = pd.DataFrame(sample_data)
-    
+
     # تحليل البنك
     results = agent.analyze_bank_statement(df, "National Bank of Egypt")
-    
+
     print("=" * 80)
     print("Finovate Audit Nexus AI - Bank & Treasury Audit Agent")
     print("=" * 80)
@@ -844,15 +840,15 @@ if __name__ == "__main__":
     for key, value in results['results']['summary'].items():
         if key not in ['top_10_deposits', 'top_10_withdrawals']:
             print(f"  {key}: {value}")
-    
+
     print(f"\nSuspicious Activities Found: {len(results['results']['suspicious_activities'])}")
     for activity in results['results']['suspicious_activities'][:3]:
         print(f"  - {activity['activity_type']}: {activity['description']}")
-    
+
     print(f"\nRecommendations: {len(results['results']['recommendations'])}")
     for rec in results['results']['recommendations']:
         print(f"  [{rec['priority'].upper()}] {rec['recommendation']}")
-    
+
     print("\n" + "=" * 80)
     print("Developed By: Ahmed Mostafa Ibrahim")
     print("© 2025 Finovate – AHMED EG - All Rights Reserved")

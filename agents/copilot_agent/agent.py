@@ -2,19 +2,19 @@
 Finovate Audit Nexus AI - AI Copilot Agent
 المساعد الذكي للتدقيق المالي
 """
-import re
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any, Dict
+
 
 class AICopilotAgent:
     """
     مساعد مالي ذكي يجيب على الأسئلة ويقدم التوصيات
     """
-    
+
     def __init__(self):
         self.knowledge_base = self._load_knowledge_base()
         self.conversation_history = []
-    
+
     def _load_knowledge_base(self) -> Dict:
         """تحميل قاعدة المعرفة بالمعايير والقوانين"""
         return {
@@ -51,7 +51,7 @@ class AICopilotAgent:
                 "مستندات ناقصة أو غير مكتملة"
             ]
         }
-    
+
     def ask(self, question: str) -> Dict[str, Any]:
         """
         الإجابة على سؤال المستخدم
@@ -62,19 +62,19 @@ class AICopilotAgent:
             "content": question,
             "timestamp": datetime.now()
         })
-        
+
         # تطبيع النص العربي
         import re
         normalized = re.sub(r'[ًٌٍَُِّْ~`]', '', question_lower)
         normalized = normalized.replace('ة', 'ه').replace('ى', 'ي').replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا')
-        
+
         # كلمات مفتاحية منفصلة للبحث
         has_vat = any(k in normalized for k in ["ضريبه", "vat"]) and any(k in normalized for k in ["قيمه", "مضافه", "value"])
         has_income_tax = "ضريبه" in normalized and ("دخل" in normalized or "income" in normalized or "شريحه" in normalized)
         has_ifrs = any(k in normalized for k in ["معيار", "ifrs", "ias", "المعايير"])
         has_fraud = any(k in normalized for k in ["احتيال", "fraud", "كشف", "مؤشر", "غش", "تلاعب"])
         has_ratio = any(k in normalized for k in ["نسبه", "ratio", "تحليل", "النسب", "نسبة"])
-        
+
         if has_vat:
             answer = self._answer_vat_question(question)
         elif has_income_tax:
@@ -85,7 +85,7 @@ class AICopilotAgent:
             answer = self._answer_fraud_question(question)
         elif has_ratio:
             answer = self._answer_ratio_question(question)
-        
+
         else:
             answer = {
                 "answer": "عذراً، لم أفهم السؤال تماماً. يمكنك سؤالي عن:\n" +
@@ -97,19 +97,19 @@ class AICopilotAgent:
                 "confidence": 0.5,
                 "sources": []
             }
-        
+
         self.conversation_history.append({
             "role": "assistant",
             "content": answer.get("answer", ""),
             "timestamp": datetime.now()
         })
-        
+
         return answer
-    
+
     def _answer_vat_question(self, question: str) -> Dict:
         """الإجابة على أسئلة VAT"""
         vat_info = self.knowledge_base["vat_egypt"]
-        
+
         return {
             "answer": f"""
 📌 ضريبة القيمة المضافة في مصر:
@@ -131,16 +131,16 @@ class AICopilotAgent:
             "sources": [vat_info['law']],
             "related_topics": ["الإقرارات الضريبية", "الفواتير الإلكترونية", "الخصم الضريبي"]
         }
-    
+
     def _answer_income_tax_question(self, question: str) -> Dict:
         """الإجابة على أسئلة ضريبة الدخل"""
         brackets = self.knowledge_base["income_tax_brackets"]["brackets"]
-        
+
         bracket_text = ""
         for i, b in enumerate(brackets):
             max_val = b['max'] if b['max'] else "فما فوق"
             bracket_text += f"{i+1}. من {b['min']:,.0f} إلى {max_val}: {b['rate']*100}%\n"
-        
+
         return {
             "answer": f"""
 📌 شرائح ضريبة الدخل في مصر (للأفراد):
@@ -162,11 +162,11 @@ class AICopilotAgent:
             "sources": [self.knowledge_base['income_tax_brackets']['law']],
             "related_topics": ["الخصومات المسموحة", "الإقرار الضريبي", "الضريبة النهائية"]
         }
-    
+
     def _answer_ifrs_question(self, question: str) -> Dict:
         """الإجابة على أسئلة المعايير المحاسبية"""
         standards = self.knowledge_base["ifrs_standards"]
-        
+
         # البحث عن معيار محدد
         for code in standards.keys():
             if code.lower() in question.lower():
@@ -176,10 +176,10 @@ class AICopilotAgent:
                     "sources": ["International Financial Reporting Standards"],
                     "related_topics": list(standards.keys())
                 }
-        
+
         # عرض جميع المعايير
         standards_list = "\n".join([f"• {k}: {v}" for k, v in standards.items()])
-        
+
         return {
             "answer": f"""
 📌 المعايير الدولية للتقارير المالية (IFRS):
@@ -192,13 +192,13 @@ class AICopilotAgent:
             "sources": ["IFRS Foundation"],
             "related_topics": ["المعايير المصرية", "التطبيق العملي", "الاختلافات المحلية"]
         }
-    
+
     def _answer_fraud_question(self, question: str) -> Dict:
         """الإجابة على أسئلة كشف الاحتيال"""
         indicators = self.knowledge_base["fraud_indicators"]
-        
+
         indicators_text = "\n".join([f"⚠️ {item}" for item in indicators])
-        
+
         return {
             "answer": f"""
 🚨 مؤشرات كشف الاحتيال المالي:
@@ -218,7 +218,7 @@ class AICopilotAgent:
             "sources": ["Association of Certified Fraud Examiners"],
             "related_topics": ["التحقيق الجنائي", "Forensic Accounting", "Internal Controls"]
         }
-    
+
     def _answer_ratio_question(self, question: str) -> Dict:
         """الإجابة على أسئلة النسب المالية"""
         return {
@@ -248,20 +248,20 @@ class AICopilotAgent:
             "sources": ["Financial Analysis Best Practices"],
             "related_topics": ["Beneish M-Score", "Altman Z-Score", "التحليل الرأسي والأفقي"]
         }
-    
+
     def get_conversation_summary(self) -> str:
         """تلخيص المحادثة الحالية"""
         if not self.conversation_history:
             return "لا توجد محادثة حالياً"
-        
+
         summary = "📝 ملخص المحادثة:\n\n"
         for i, msg in enumerate(self.conversation_history[-10:], 1):  # آخر 10 رسائل
             role = "👤 أنت" if msg['role'] == 'user' else "🤖 المساعد"
             content = msg['content'][:100] + "..." if len(msg['content']) > 100 else msg['content']
             summary += f"{i}. {role}: {content}\n"
-        
+
         return summary
-    
+
     def clear_history(self):
         """مسح سجل المحادثة"""
         self.conversation_history = []
@@ -270,11 +270,11 @@ class AICopilotAgent:
 # مثال للاستخدام
 if __name__ == "__main__":
     copilot = AICopilotAgent()
-    
+
     print("="*60)
     print("🤖 Finovate AI Copilot - المساعد المالي الذكي")
     print("="*60)
-    
+
     questions = [
         "ما هي ضريبة القيمة المضافة في مصر؟",
         "كيف تحسب ضريبة الدخل لشريحة 50000 جنيه؟",
@@ -282,7 +282,7 @@ if __name__ == "__main__":
         "ما هي مؤشرات كشف الاحتيال المالي؟",
         "كيف أحسب النسبة الجارية؟"
     ]
-    
+
     for q in questions:
         print(f"\n❓ السؤال: {q}")
         print("-" * 60)
@@ -290,5 +290,5 @@ if __name__ == "__main__":
         print(response['answer'])
         print(f"\n🎯 درجة الثقة: {response['confidence']*100:.0f}%")
         print("="*60)
-    
+
     print("\n" + copilot.get_conversation_summary())

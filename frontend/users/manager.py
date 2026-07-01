@@ -128,19 +128,22 @@ class User:
     mfa_secret: Optional[str] = None
     
     def to_dict(self) -> Dict[str, Any]:
-        """تحويل المستخدم إلى قاموس"""
         return {
             "user_id": self.user_id,
             "username": self.username,
             "email": self.email,
+            "password_hash": self.password_hash,
             "role": self.role.value,
             "full_name": self.full_name,
             "department": self.department,
             "is_active": self.is_active,
             "is_locked": self.is_locked,
+            "failed_login_attempts": self.failed_login_attempts,
             "last_login": self.last_login.isoformat() if self.last_login else None,
             "created_at": self.created_at.isoformat(),
-            "mfa_enabled": self.mfa_enabled
+            "updated_at": self.updated_at.isoformat(),
+            "mfa_enabled": self.mfa_enabled,
+            "mfa_secret": self.mfa_secret
         }
 
 
@@ -247,7 +250,7 @@ class RBACManager:
             salt, stored_hash = password_hash.split(":")
             new_hash = hashlib.sha256((salt + password).encode()).hexdigest()
             return new_hash == stored_hash
-        except:
+        except (ValueError, IndexError):
             return False
     
     def create_user(self, username: str, email: str, password: str,

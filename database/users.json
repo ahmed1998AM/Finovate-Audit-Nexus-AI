@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "user_id": "admin_001",
+      "username": "admin",
+      "email": "admin@finovate.com",
+      "password_hash": "c3f768f80e7dbba41e8f483c4c01530a:00d258a071dd7cb3e1b52e0772b62be6e95ad3d606d4f44188f0d3cc20c7440a",
+      "role": "Admin",
+      "full_name": "System Administrator",
+      "department": "IT",
+      "is_active": true,
+      "is_locked": false,
+      "failed_login_attempts": 0,
+      "last_login": "2026-06-20T17:44:37.881839",
+      "created_at": "2026-06-20T16:50:11.167130",
+      "updated_at": "2026-06-20T16:50:11.167130",
+      "mfa_enabled": false,
+      "mfa_secret": null
+    }
+  ],
+  "last_updated": "2026-06-20T17:44:37.881839"
+}

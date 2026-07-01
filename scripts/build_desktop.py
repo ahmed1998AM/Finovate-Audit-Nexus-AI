@@ -7,38 +7,45 @@ import subprocess
 import sys
 
 def build():
-    print("🚀 Starting Finovate Audit Nexus AI Desktop Build...")
+    print("=" * 60)
+    print("Finovate Audit Nexus AI - Desktop Build")
+    print("=" * 60)
+    
+    # Ensure we are in project root
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(project_root)
     
     # Check for PyInstaller
     try:
         import PyInstaller
+        print(f"[OK] PyInstaller {PyInstaller.__version__}")
     except ImportError:
-        print("📦 Installing PyInstaller...")
+        print("[INFO] Installing PyInstaller...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
+        print("[OK] PyInstaller installed")
 
-    # Define the command
-    cmd = [
-        "pyinstaller",
-        "--noconfirm",
-        "--onefile",
-        "--windowed",
-        "--name=FinovateAuditNexus",
-        "--add-data=frontend/web_dashboard/audit_dashboard.html:frontend/web_dashboard",
-        "--add-data=assets:assets",
-        "--icon=assets/icon.ico" if os.path.exists("assets/icon.ico") else "",
-        "main.py"
-    ]
+    # Install dependencies first
+    print("[INFO] Installing dependencies...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "--quiet"])
+    print("[OK] Dependencies installed")
+
+    # Build using the optimized spec file (supports both onedir/onefile)
+    spec_file = "finovate_audit.spec"
+    cmd = ["pyinstaller", "--clean", "--noconfirm", spec_file]
     
-    # Filter out empty strings
-    cmd = [c for c in cmd if c]
-    
-    print(f"🛠️ Executing: {' '.join(cmd)}")
+    print(f"[BUILD] {' '.join(cmd)}")
+    print()
     
     try:
         subprocess.check_call(cmd)
-        print("✅ Build Successful! Check the 'dist' folder.")
+        print()
+        print("=" * 60)
+        print("[SUCCESS] Build Complete!")
+        print(f"[OUTPUT] dist/FinovateAuditNexusAI/")
+        print("=" * 60)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Build Failed: {e}")
+        print(f"[ERROR] Build Failed: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     build()

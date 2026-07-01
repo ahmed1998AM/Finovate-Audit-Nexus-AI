@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.fraud_agent.agent import FraudAgent
+from agents.fraud_agent.agent import FraudDetectionAgent
 from datetime import datetime, timedelta
 
 
@@ -20,7 +20,7 @@ def run_fraud_detection_demo():
     print()
     
     # إنشاء وكيل كشف الاحتيال
-    fraud_agent = FraudAgent()
+    fraud_agent = FraudDetectionAgent()
     
     # معاملات تجريبية (بعضها مشبوه)
     sample_transactions = [

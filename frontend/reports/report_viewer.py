@@ -1,145 +1,175 @@
-"""
-Finovate Audit Nexus AI - Report Viewer Widget
-عارض التقارير الاحترافي
-"""
+"""Report viewer — list, create, preview, and export audit reports."""
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QFrame, QScrollArea, QGridLayout, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QTableWidget, QTableWidgetItem, QHeaderView, QTextBrowser,
+    QMessageBox, QComboBox, QSplitter, QFrame,
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, QTimer
+from loguru import logger
+
+from frontend.api_client import get_client
+from frontend.styles.design_system import Color
 
 
 class ReportViewerWidget(QWidget):
-    """واجهة عرض التقارير"""
-
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("ReportViewerWidget")
+        self._reports: list = []
+        self._selected_id: str = ""
         self._setup_ui()
+        self._load_reports()
 
     def _setup_ui(self):
-        """إعداد الواجهة"""
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(20)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
 
-        # العنوان الرئيسي
-        title_label = QLabel("📑 عرض التقارير")
-        title_label.setFont(QFont("Arial", 24, QFont.Bold))
-        title_label.setStyleSheet("color: #2c3e50; padding: 10px;")
-        main_layout.addWidget(title_label)
+        header = QHBoxLayout()
+        title = QLabel("التقارير")
+        title.setStyleSheet(f"font-size: 22px; font-weight: 700; color: {Color.TEXT_PRIMARY};")
+        header.addWidget(title)
+        header.addStretch()
 
-        # أزرار الإجراءات
-        actions_layout = QHBoxLayout()
-        
-        refresh_btn = QPushButton("🔄 تحديث")
-        refresh_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-        """)
-        actions_layout.addWidget(refresh_btn)
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet(f"color: {Color.TEXT_SECONDARY}; font-size: 12px;")
+        header.addWidget(self.status_label)
 
-        export_btn = QPushButton("📤 تصدير")
-        export_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27ae60;
-                color: white;
-                border-radius: 5px;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #229954;
-            }
-        """)
-        actions_layout.addWidget(export_btn)
+        refresh_btn = QPushButton("تحديث")
+        refresh_btn.clicked.connect(self._load_reports)
+        header.addWidget(refresh_btn)
 
-        actions_layout.addStretch()
-        main_layout.addLayout(actions_layout)
+        create_btn = QPushButton("تقرير جديد")
+        create_btn.clicked.connect(self._create_report)
+        header.addWidget(create_btn)
+        layout.addLayout(header)
 
-        # جدول التقارير
-        self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels([
-            "اسم التقرير", "النوع", "التاريخ", "الحجم", "الإجراءات"
-        ])
+        splitter = QSplitter(Qt.Horizontal)
+
+        left = QFrame()
+        left_layout = QVBoxLayout(left)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.table = QTableWidget(0, 4)
+        self.table.setHorizontalHeaderLabels(["المعرف", "المشروع", "النوع", "الحالة"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border-radius: 10px;
-                border: 1px solid #e0e0e0;
-                gridline-color: #e0e0e0;
-            }
-            QTableWidget::item {
-                padding: 10px;
-            }
-            QHeaderView::section {
-                background-color: #34495e;
-                color: white;
-                padding: 10px;
-                border: none;
-                font-weight: bold;
-            }
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.itemSelectionChanged.connect(self._on_row_selected)
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {Color.BG_CARD}; color: {Color.TEXT_PRIMARY};
+                border: 1px solid {Color.BORDER}; border-radius: 8px;
+            }}
+            QHeaderView::section {{
+                background: {Color.BG_MEDIUM}; color: {Color.TEXT_PRIMARY}; padding: 8px;
+            }}
         """)
+        left_layout.addWidget(self.table)
 
-        # إضافة بيانات تجريبية
-        sample_reports = [
-            ("تقرير التدقيق الشامل Q1 2025", "PDF", "2025-01-15", "2.5 MB"),
-            ("تحليل المخاطر المالية", "Excel", "2025-01-14", "1.8 MB"),
-            ("تقرير الامتثال الضريبي", "PDF", "2025-01-13", "3.2 MB"),
-            ("كشف الاحتيال - يناير", "HTML", "2025-01-12", "0.5 MB"),
-            ("ميزان المراجعة التفصيلي", "Excel", "2025-01-11", "4.1 MB"),
-        ]
+        export_row = QHBoxLayout()
+        self.format_combo = QComboBox()
+        self.format_combo.addItems(["pdf", "html", "json", "xlsx"])
+        export_row.addWidget(self.format_combo)
+        export_btn = QPushButton("تصدير")
+        export_btn.clicked.connect(self._export_report)
+        export_row.addWidget(export_btn)
+        summary_btn = QPushButton("ملخص تنفيذي")
+        summary_btn.clicked.connect(self._show_summary)
+        export_row.addWidget(summary_btn)
+        left_layout.addLayout(export_row)
+        splitter.addWidget(left)
 
-        self.table.setRowCount(len(sample_reports))
-        for row, (name, type_, date, size) in enumerate(sample_reports):
-            self.table.setItem(row, 0, QTableWidgetItem(name))
-            self.table.setItem(row, 1, QTableWidgetItem(type_))
-            self.table.setItem(row, 2, QTableWidgetItem(date))
-            self.table.setItem(row, 3, QTableWidgetItem(size))
+        self.preview = QTextBrowser()
+        self.preview.setStyleSheet(f"""
+            QTextBrowser {{
+                background: {Color.BG_CARD}; color: {Color.TEXT_PRIMARY};
+                border: 1px solid {Color.BORDER}; border-radius: 8px; padding: 12px;
+            }}
+        """)
+        self.preview.setPlaceholderText("اختر تقريراً لعرض الملخص التنفيذي...")
+        splitter.addWidget(self.preview)
+        splitter.setSizes([500, 400])
+        layout.addWidget(splitter)
 
-            # زر الإجراء
-            action_widget = QWidget()
-            action_layout = QHBoxLayout(action_widget)
-            action_layout.setContentsMargins(5, 5, 5, 5)
+        timer = QTimer(self)
+        timer.timeout.connect(self._load_reports)
+        timer.start(60000)
 
-            view_btn = QPushButton("👁️")
-            view_btn.setFixedSize(40, 30)
-            view_btn.setToolTip("عرض")
-            action_layout.addWidget(view_btn)
+    def _set_status(self, text: str, offline: bool = False):
+        color = Color.WARNING if offline else Color.TEXT_SECONDARY
+        self.status_label.setText(text)
+        self.status_label.setStyleSheet(f"color: {color}; font-size: 12px;")
 
-            download_btn = QPushButton("📥")
-            download_btn.setFixedSize(40, 30)
-            download_btn.setToolTip("تنزيل")
-            action_layout.addWidget(download_btn)
+    def _load_reports(self):
+        client = get_client()
+        if not client.check_available():
+            self._set_status("غير متصل بالخادم", offline=True)
+            return
+        if not client._token:
+            self._set_status("سجّل الدخول عبر API لعرض التقارير", offline=True)
+            return
 
-            action_layout.addStretch()
-            self.table.setCellWidget(row, 4, action_widget)
+        reports = client.list_reports()
+        self._reports = reports
+        self.table.setRowCount(0)
+        for row, rpt in enumerate(reports):
+            self.table.insertRow(row)
+            rid = rpt.get("report_id", "")
+            self.table.setItem(row, 0, QTableWidgetItem(rid))
+            self.table.setItem(row, 1, QTableWidgetItem(str(rpt.get("project_id", ""))))
+            self.table.setItem(row, 2, QTableWidgetItem(rpt.get("report_type", "")))
+            self.table.setItem(row, 3, QTableWidgetItem(rpt.get("status", "draft")))
+        self._set_status(f"{len(reports)} تقرير")
 
-        main_layout.addWidget(self.table)
+    def _on_row_selected(self):
+        rows = self.table.selectionModel().selectedRows()
+        if not rows:
+            return
+        row = rows[0].row()
+        item = self.table.item(row, 0)
+        if item:
+            self._selected_id = item.text()
 
-    def load_reports(self):
-        """تحميل قائمة التقارير"""
-        # سيتم تنفيذه عبر خدمة التقارير
-        pass
+    def _create_report(self):
+        client = get_client()
+        if not client._token:
+            QMessageBox.warning(self, "تسجيل الدخول", "يجب تسجيل الدخول عبر API أولاً.")
+            return
+        result = client.create_report(project_id="1", report_type="audit")
+        if result.get("success"):
+            data = result.get("data", {})
+            QMessageBox.information(self, "تم", f"تم إنشاء التقرير: {data.get('report_id', '')}")
+            self._load_reports()
+        else:
+            QMessageBox.warning(self, "خطأ", "تعذّر إنشاء التقرير.")
 
+    def _show_summary(self):
+        if not self._selected_id:
+            QMessageBox.information(self, "اختيار", "اختر تقريراً من الجدول.")
+            return
+        client = get_client()
+        result = client.generate_report_summary(self._selected_id)
+        if not result.get("success"):
+            QMessageBox.warning(self, "خطأ", "تعذّر توليد الملخص.")
+            return
+        summary = result.get("data", {}).get("executive_summary", result.get("data", {}))
+        lines = ["<h2>الملخص التنفيذي</h2>"]
+        if isinstance(summary, dict):
+            for key, val in summary.items():
+                lines.append(f"<p><b>{key}:</b> {val}</p>")
+        else:
+            lines.append(f"<p>{summary}</p>")
+        self.preview.setHtml("\n".join(lines))
 
-if __name__ == "__main__":
-    from PySide6.QtWidgets import QApplication
-    import sys
-    app = QApplication(sys.argv)
-    widget = ReportViewerWidget()
-    widget.show()
-    sys.exit(app.exec())
+    def _export_report(self):
+        if not self._selected_id:
+            QMessageBox.information(self, "اختيار", "اختر تقريراً من الجدول.")
+            return
+        fmt = self.format_combo.currentText()
+        client = get_client()
+        result = client.export_report(self._selected_id, fmt)
+        if result.get("success"):
+            path = result.get("data", {}).get("file_path", result.get("data", {}).get("path", ""))
+            QMessageBox.information(self, "تصدير", f"تم التصدير بنجاح.\n{path}")
+        else:
+            QMessageBox.warning(self, "خطأ", "تعذّر تصدير التقرير.")

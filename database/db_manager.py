@@ -1,23 +1,42 @@
 """
-Database Manager for Finovate Audit Nexus AI
+Desktop Database Manager for Finovate Audit Nexus AI
+Delegates to backend.database when available; falls back to local SQLite for desktop storage.
+
+DEPRECATED: Prefer `backend.database` directly.
 """
+import logging
 import os
 from typing import Any, List, Dict, Optional
-from sqlalchemy import create_all, create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from database.models.schema import Base, Engagement, Finding, FinancialData, Anomaly, RiskAssessment
+from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
+logger.warning("database.db_manager is deprecated. Use backend.database instead.")
+
+try:
+    from backend.database import engine, SessionLocal, get_db, Base as BackendBase
+    HAS_BACKEND = True
+except ImportError:
+    HAS_BACKEND = False
+
+if not HAS_BACKEND:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from database.models.schema import Base, Engagement, Finding, FinancialData, Anomaly, RiskAssessment
 
 class DatabaseManager:
     def __init__(self, db_url: str = None):
+        if HAS_BACKEND:
+            from backend.database import engine as be_engine, SessionLocal as be_session
+            self.engine = be_engine
+            self.SessionLocal = be_session
+            return
         if not db_url:
-            # Use a local directory for the desktop app
             app_data_dir = os.path.join(os.path.expanduser("~"), ".finovate_audit")
             if not os.path.exists(app_data_dir):
                 os.makedirs(app_data_dir)
             db_path = os.path.join(app_data_dir, "audit_nexus.db")
             db_url = os.getenv("DATABASE_URL", f"sqlite:///{db_path}")
-        
-        # Use connection pooling for better performance
+        from sqlalchemy import create_engine
         self.engine = create_engine(
             db_url, 
             connect_args={"check_same_thread": False} if "sqlite" in db_url else {},

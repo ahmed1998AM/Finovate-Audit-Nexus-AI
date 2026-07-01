@@ -5,6 +5,7 @@ Enterprise AI Financial Audit & Intelligence Platform
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QFrame, QProgressBar
 from PySide6.QtCore import Qt
+from frontend.api_client import get_client
 
 class KPIMetricsWidget(QWidget):
     """Widget for displaying Key Performance Indicators"""
@@ -12,6 +13,39 @@ class KPIMetricsWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
+        self.load_data()
+    
+    def load_data(self):
+        try:
+            report = get_client().get_summary_report()
+            fh = report.get("financial_highlights", {})
+            rev = fh.get("total_revenue", 0)
+            profit = fh.get("net_profit", 0)
+            assets = fh.get("total_assets", 0)
+            equity = fh.get("equity", 1)
+            roi = round(profit / max(assets, 1) * 100, 1) if assets else 0
+            kpis = [
+                ("Total Revenue", rev, max(rev * 1.1, 1)),
+                ("Net Profit", profit, max(profit * 1.15, 1)),
+                ("Total Assets", assets, max(assets * 1.05, 1)),
+                ("Equity", equity, max(equity * 1.1, 1)),
+                ("ROI", roi, 20.0),
+                ("Debt to Equity", round((assets - equity) / max(equity, 1), 2), 1.0),
+            ]
+        except Exception:
+            kpis = [
+                ("Total Revenue", 0, 1),
+                ("Net Profit", 0, 1),
+                ("Total Assets", 0, 1),
+                ("Equity", 0, 1),
+                ("ROI", 0, 20.0),
+                ("Debt to Equity", 0, 1.0),
+            ]
+        for i, (name, value, target) in enumerate(kpis):
+            widget = self.create_kpi_widget(name, value, target)
+            row = i // 2
+            col = i % 2
+            self.grid.addWidget(widget, row, col)
     
     def setup_ui(self):
         """Initialize the KPI metrics UI"""
@@ -23,24 +57,8 @@ class KPIMetricsWidget(QWidget):
         layout.addWidget(header)
         
         # KPI Grid
-        grid = QGridLayout()
-        
-        kpis = [
-            ("Liquidity Ratio", 1.85, 2.0),
-            ("Debt to Equity", 0.45, 1.0),
-            ("ROI", 15.5, 20.0),
-            ("Gross Margin", 42.3, 50.0),
-            ("Operating Margin", 18.7, 25.0),
-            ("Current Ratio", 2.1, 2.5),
-        ]
-        
-        for i, (name, value, target) in enumerate(kpis):
-            widget = self.create_kpi_widget(name, value, target)
-            row = i // 2
-            col = i % 2
-            grid.addWidget(widget, row, col)
-        
-        layout.addLayout(grid)
+        self.grid = QGridLayout()
+        layout.addLayout(self.grid)
     
     def create_kpi_widget(self, name, value, target):
         """Create individual KPI widget with progress bar"""

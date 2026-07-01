@@ -3,13 +3,14 @@ Finovate Audit Nexus AI - Oracle E-Business Suite Connector
 الاتصال المباشر مع أنظمة Oracle E-Business Suite
 """
 import logging
-from typing import Dict, List, Any, Optional
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from connectors.base_connector import BaseERPConnector
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class EBSConnectionConfig:
@@ -22,47 +23,39 @@ class EBSConnectionConfig:
     responsibility: str = ""
     org_id: Optional[str] = None
 
-
-class EBSErpConnector:
+class EBSErpConnector(BaseERPConnector):
     """
     موصل Oracle E-Business Suite للقراءة فقط
     يدعم استخراج البيانات المالية عبر SQL مباشر أو APIs
-    
+
     ملاحظة: يتطلب cx_Oracle أو oracledb للاتصال الفعلي
     """
 
     def __init__(self, config: EBSConnectionConfig):
+        super().__init__()
         self.config = config
         self.connection = None
         self.cursor = None
-        self.is_connected = False
-        self.last_sync: Optional[datetime] = None
 
     def connect(self) -> bool:
         """
         إنشاء اتصال بـ Oracle E-Business Suite
         """
         try:
-            # في البيئة الإنتاجية، استخدم oracledb أو cx_Oracle
-            # import oracledb
-            # self.connection = oracledb.connect(
-            #     user=self.config.username,
-            #     password=self.config.password,
-            #     dsn=f"{self.config.host}:{self.config.port}/{self.config.database}"
-            # )
-            # self.cursor = self.connection.cursor()
-            
             logger.info(f"Connecting to Oracle EBS at {self.config.host}:{self.config.port}")
-            logger.warning("Oracle EBS connection simulated - install oracledb for real connection")
-
-            self.is_connected = True
+            import oracledb
+            self.connection = oracledb.connect(
+                user=self.config.username,
+                password=self.config.password,
+                dsn=f"{self.config.host}:{self.config.port}/{self.config.database}"
+            )
+            self.cursor = self.connection.cursor()
+            self._connected = True
             self.last_sync = datetime.now()
-
             return True
-
         except Exception as e:
             logger.error(f"Oracle EBS connection failed: {str(e)}")
-            self.is_connected = False
+            self._connected = False
             return False
 
     def disconnect(self) -> None:
@@ -70,27 +63,27 @@ class EBSErpConnector:
         if self.cursor:
             try:
                 self.cursor.close()
-            except:
+            except Exception:
                 pass
         if self.connection:
             try:
                 self.connection.close()
-            except:
+            except Exception:
                 pass
-        self.is_connected = False
+        self._connected = False
         logger.info("Disconnected from Oracle EBS")
 
     def test_connection(self) -> Dict[str, Any]:
         """اختبار الاتصال"""
         result = {
-            "status": "connected" if self.is_connected else "disconnected",
+            "status": "connected" if self._connected else "disconnected",
             "database": self.config.database,
             "host": self.config.host,
             "timestamp": datetime.now().isoformat(),
             "read_only": True
         }
 
-        if self.is_connected:
+        if self._connected:
             result["system_info"] = {
                 "db_version": "19c",
                 "ebs_version": "12.2.x"
@@ -100,24 +93,19 @@ class EBSErpConnector:
 
     def _execute_query(self, query: str, params: Optional[Dict] = None) -> List[Dict]:
         """تنفيذ استعلام SQL"""
-        if not self.is_connected:
+        if not self._connected:
             logger.warning("Not connected to Oracle EBS")
             return []
 
         try:
-            # محاكاة الاستعلام
             logger.info(f"Executing query: {query[:100]}...")
-            
-            # في البيئة الإنتاجية:
-            # if params:
-            #     self.cursor.execute(query, params)
-            # else:
-            #     self.cursor.execute(query)
-            # columns = [col[0] for col in self.cursor.description]
-            # results = [dict(zip(columns, row)) for row in self.cursor.fetchall()]
-            
-            return []  # محاكاة
-            
+            if params:
+                self.cursor.execute(query, params)
+            else:
+                self.cursor.execute(query)
+            columns = [col[0] for col in self.cursor.description]
+            results = [dict(zip(columns, row)) for row in self.cursor.fetchall()]
+            return results
         except Exception as e:
             logger.error(f"Query execution failed: {str(e)}")
             return []
@@ -130,17 +118,17 @@ class EBSErpConnector:
     ) -> List[Dict]:
         """
         جلب قيود اليومية من Oracle EBS
-        
+
         Args:
             date_from: تاريخ البدء
             date_to: تاريخ الانتهاء
             ledger_id: معرف دفتر الأستاذ
-            
+
         Returns:
             List[Dict]: قائمة القيود
         """
         query = """
-            SELECT 
+            SELECT
                 gjh.je_header_id id,
                 gjh.name reference,
                 gjh.default_effective_date date,
@@ -156,7 +144,7 @@ class EBSErpConnector:
             JOIN gl_code_combinations_kfv gcc ON gjl.code_combination_id = gcc.code_combination_id
             WHERE 1=1
         """
-        
+
         params = {}
         if date_from:
             query += " AND gjh.default_effective_date >= TO_DATE(:date_from, 'YYYY-MM-DD')"
@@ -169,11 +157,11 @@ class EBSErpConnector:
             params['ledger_id'] = ledger_id
 
         results = self._execute_query(query, params)
-        
+
         # توحيد التنسيق
         standardized = []
         current_entry = None
-        
+
         for row in results:
             if current_entry is None or current_entry['id'] != row['id']:
                 if current_entry:
@@ -185,7 +173,7 @@ class EBSErpConnector:
                     'description': row.get('description'),
                     'lines': []
                 }
-            
+
             current_entry['lines'].append({
                 'line_num': row.get('line_num'),
                 'account_code': row.get('account_code'),
@@ -193,10 +181,10 @@ class EBSErpConnector:
                 'credit': float(row.get('credit') or 0),
                 'description': row.get('line_description')
             })
-        
+
         if current_entry:
             standardized.append(current_entry)
-        
+
         return standardized
 
     def get_trial_balance(
@@ -206,12 +194,12 @@ class EBSErpConnector:
     ) -> List[Dict]:
         """
         جلب ميزان المراجعة
-        
+
         Returns:
             List[Dict]: ميزان المراجعة
         """
         query = """
-            SELECT 
+            SELECT
                 gcc.concatenated_segments account_code,
                 gcc.description account_name,
                 SUM(NVL(gjl.entered_dr, 0)) debit,
@@ -222,7 +210,7 @@ class EBSErpConnector:
             LEFT JOIN gl_je_headers gjh ON gjl.je_header_id = gjh.je_header_id
             WHERE 1=1
         """
-        
+
         params = {}
         if date:
             query += " AND gjh.default_effective_date <= TO_DATE(:date, 'YYYY-MM-DD')"
@@ -230,11 +218,11 @@ class EBSErpConnector:
         if ledger_id:
             query += " AND gjh.ledger_id = :ledger_id"
             params['ledger_id'] = ledger_id
-        
+
         query += " GROUP BY gcc.concatenated_segments, gcc.description ORDER BY gcc.concatenated_segments"
 
         results = self._execute_query(query, params)
-        
+
         standardized = []
         for row in results:
             standardized.append({
@@ -244,13 +232,13 @@ class EBSErpConnector:
                 'credit': float(row.get('credit') or 0),
                 'balance': float(row.get('balance') or 0)
             })
-        
+
         return standardized
 
     def get_accounts(self, company_code: Optional[str] = None) -> List[Dict]:
         """جلب دليل الحسابات"""
         query = """
-            SELECT 
+            SELECT
                 gcc.concatenated_segments code,
                 gcc.description name,
                 'Detail' type,
@@ -258,9 +246,9 @@ class EBSErpConnector:
             FROM gl_code_combinations_kfv gcc
             WHERE gcc.enabled_flag = 'Y'
         """
-        
+
         results = self._execute_query(query)
-        
+
         standardized = []
         for row in results:
             standardized.append({
@@ -269,7 +257,7 @@ class EBSErpConnector:
                 'type': row.get('type'),
                 'balance': row.get('balance')
             })
-        
+
         return standardized
 
     def get_financial_statements(
@@ -290,7 +278,7 @@ class EBSErpConnector:
             'erp_type': 'Oracle E-Business Suite',
             'host': self.config.host,
             'database': self.config.database,
-            'connected': self.is_connected,
+            'connected': self._connected,
             'last_sync': self.last_sync.isoformat() if self.last_sync else None
         }
 
@@ -301,34 +289,30 @@ class EBSErpConnector:
             'trial_balance': 0,
             'accounts': 0
         }
-        
-        if self.is_connected:
+
+        if self._connected:
             entries = self.get_journal_entries()
             results['journal_entries'] = len(entries)
-            
+
             tb = self.get_trial_balance()
             results['trial_balance'] = len(tb)
-            
+
             accounts = self.get_accounts()
             results['accounts'] = len(accounts)
-            
+
             self.last_sync = datetime.now()
-        
+
         return results
-
-    def is_connected(self) -> bool:
-        """التحقق من حالة الاتصال"""
-        return self.is_connected
-
 
 def create_ebs_connector(config: Dict[str, Any]) -> EBSErpConnector:
     """إنشاء موصل EBS"""
     ebs_config = EBSConnectionConfig(
         host=config.get("host", ""),
         port=config.get("port", 1521),
-        service_name=config.get("service_name", ""),
+        database=config.get("database", config.get("service_name", "")),
         username=config.get("username", ""),
         password=config.get("password", ""),
-        schema=config.get("schema", "APPS")
+        responsibility=config.get("responsibility", ""),
+        org_id=config.get("org_id", config.get("schema", None))
     )
     return EBSErpConnector(ebs_config)

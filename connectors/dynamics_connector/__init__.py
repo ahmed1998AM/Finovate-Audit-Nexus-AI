@@ -1,5 +1,5 @@
 """Dynamics Connector for Finovate Audit Nexus AI"""
-from .connector import DynamicsErpConnector, DynamicsConnectionConfig
+from .connector import DynamicsConnectionConfig, DynamicsErpConnector
 
 __all__ = ['DynamicsErpConnector', 'DynamicsConnectionConfig']
 

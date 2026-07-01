@@ -11,32 +11,32 @@ Explainable AI (XAI) Agent
 - تقديم توصيات قابلة للتنفيذ
 """
 
-from typing import Dict, List, Any, Optional
-from datetime import datetime
 import json
+from datetime import datetime
+from typing import Any, Dict, List
 
 
 class ExplainableAIAgent:
     """وكيل تفسير قرارات الذكاء الاصطناعي"""
-    
+
     def __init__(self):
         self.agent_name = "Explainable AI Agent"
         self.agent_type = "XAI"
         self.version = "1.0.0"
         self.created_at = datetime.now()
-        
-    def explain_decision(self, 
-                        decision: str, 
+
+    def explain_decision(self,
+                        decision: str,
                         context: Dict[str, Any],
                         confidence_score: float) -> Dict[str, Any]:
         """
         شرح قرار اتخذ بواسطة الذكاء الاصطناعي
-        
+
         Args:
             decision: القرار المتخذ
             context: سياق القرار
             confidence_score: درجة الثقة
-            
+
         Returns:
             dict: شرح مفصل للقرار
         """
@@ -52,9 +52,9 @@ class ExplainableAIAgent:
             "recommendations": self._generate_recommendations(decision, context),
             "timestamp": datetime.now().isoformat()
         }
-        
+
         return explanation
-    
+
     def _get_confidence_level(self, score: float) -> str:
         """تحديد مستوى الثقة بناءً على الدرجة"""
         if score >= 0.9:
@@ -67,7 +67,7 @@ class ExplainableAIAgent:
             return "منخفض"
         else:
             return "منخفض جداً"
-    
+
     def _generate_explanation(self, decision: str, context: Dict[str, Any]) -> str:
         """توليد شرح للقرار"""
         explanations = {
@@ -77,71 +77,71 @@ class ExplainableAIAgent:
             "risk_identified": "تم تحديد مستوى خطر يتطلب الانتباه",
             "normal_transaction": "العملية تبدو طبيعية ولا توجد مؤشرات على مشاكل"
         }
-        
+
         for key in explanations:
             if key in decision.lower():
                 return explanations[key]
-        
+
         return f"تم اتخاذ القرار بناءً على تحليل شامل للبيانات المتاحة: {decision}"
-    
+
     def _identify_key_factors(self, context: Dict[str, Any]) -> List[str]:
         """تحديد العوامل الرئيسية التي أثرت في القرار"""
         factors = []
-        
+
         if "amount" in context:
             factors.append(f"قيمة العملية: {context['amount']}")
-        
+
         if "frequency" in context:
             factors.append(f"التكرار: {context['frequency']} مرة")
-        
+
         if "deviation" in context:
             factors.append(f"نسبة الانحراف: {context['deviation']:.2%}")
-        
+
         if "pattern_match" in context:
             factors.append(f"مطابقة النمط: {context['pattern_match']}")
-        
+
         if "user_behavior" in context:
             factors.append("سلوك المستخدم غير معتاد")
-        
+
         if "timing" in context:
             factors.append(f"توقيت غير طبيعي: {context['timing']}")
-        
+
         return factors if factors else ["تحليل شامل للبيانات"]
-    
+
     def _collect_evidence(self, context: Dict[str, Any]) -> List[Dict[str, Any]]:
         """جمع الأدلة الداعمة للقرار"""
         evidence_list = []
-        
+
         if "transaction_id" in context:
             evidence_list.append({
                 "type": "معرف العملية",
                 "value": context["transaction_id"],
                 "relevance": "عالية"
             })
-        
+
         if "account" in context:
             evidence_list.append({
                 "type": "الحساب المتأثر",
                 "value": context["account"],
                 "relevance": "عالية"
             })
-        
+
         if "date" in context:
             evidence_list.append({
                 "type": "تاريخ العملية",
                 "value": context["date"],
                 "relevance": "متوسطة"
             })
-        
+
         if "user" in context:
             evidence_list.append({
                 "type": "المستخدم المنفذ",
                 "value": context["user"],
                 "relevance": "متوسطة"
             })
-        
+
         return evidence_list
-    
+
     def _build_reasoning_chain(self, decision: str, context: Dict[str, Any]) -> List[str]:
         """بناء سلسلة الاستدلال المنطقي"""
         chain = [
@@ -152,9 +152,9 @@ class ExplainableAIAgent:
             "5. تقييم النتائج بناءً على قواعد الأعمال",
             f"6. اتخاذ القرار: {decision}"
         ]
-        
+
         return chain
-    
+
     def _get_alternatives(self, context: Dict[str, Any]) -> List[str]:
         """الحصول على البدائل التي تم النظر فيها"""
         return [
@@ -164,11 +164,11 @@ class ExplainableAIAgent:
             "مراقبة الحساب لفترة أطول",
             "تصنيف العملية كطبيعية مع المراقبة"
         ]
-    
+
     def _generate_recommendations(self, decision: str, context: Dict[str, Any]) -> List[str]:
         """توليد توصيات قابلة للتنفيذ"""
         recommendations = []
-        
+
         if "fraud" in decision.lower() or "risk" in decision.lower():
             recommendations.extend([
                 "إجراء تحقيق فوري في العملية",
@@ -190,10 +190,10 @@ class ExplainableAIAgent:
                 "توثيق النتيجة في سجل المراجعة",
                 "استمرار المراقبة الدورية"
             ])
-        
+
         return recommendations
-    
-    def explain_fraud_detection(self, 
+
+    def explain_fraud_detection(self,
                                fraud_result: Dict[str, Any]) -> Dict[str, Any]:
         """شرح نتائج كشف الاحتيال بشكل مفصل"""
         explanation = {
@@ -206,36 +206,36 @@ class ExplainableAIAgent:
             "legal_implications": self._explain_legal_aspects(fraud_result),
             "timestamp": datetime.now().isoformat()
         }
-        
+
         return explanation
-    
+
     def _explain_risk_indicators(self, result: Dict[str, Any]) -> List[Dict[str, str]]:
         """شرح مؤشرات الخطر المكتشفة"""
         indicators = []
-        
+
         if result.get("duplicate_entries"):
             indicators.append({
                 "indicator": "قيود مكررة",
                 "explanation": "تم رصد عمليات متطابقة تماماً مما يشير إلى احتمال التكرار المتعمد",
                 "severity": "عالية"
             })
-        
+
         if result.get("round_amounts"):
             indicators.append({
                 "indicator": "مبالغ مدورة",
                 "explanation": "كثرة المبالغ المدورة تماماً قد تشير إلى عمليات مصطنعة",
                 "severity": "متوسطة"
             })
-        
+
         if result.get("unusual_timing"):
             indicators.append({
                 "indicator": "توقيت غير اعتيادي",
                 "explanation": "تم تنفيذ العمليات في أوقات غير العمل الرسمية",
                 "severity": "عالية"
             })
-        
+
         return indicators
-    
+
     def _explain_statistics(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """شرح التحليل الإحصائي"""
         return {
@@ -244,11 +244,11 @@ class ExplainableAIAgent:
             "trend_deviation": "انحراف عن الاتجاه التاريخي المتوقع",
             "peer_comparison": "مقارنة مع أداء الوحدات المماثلة"
         }
-    
+
     def _generate_action_plan(self, result: Dict[str, Any]) -> List[Dict[str, str]]:
         """توليد خطة عمل مفصلة"""
         risk_score = result.get("risk_score", 0)
-        
+
         if risk_score >= 80:
             return [
                 {"step": "1", "action": "إيقاف فوري للعمليات المشتبه بها", "timeline": "فوراً"},
@@ -270,7 +270,7 @@ class ExplainableAIAgent:
                 {"step": "2", "action": "متابعة روتينية", "timeline": "شهر"},
                 {"step": "3", "action": "مراجعة دورية", "timeline": "ربع سنوي"}
             ]
-    
+
     def _explain_legal_aspects(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """شرح الجوانب القانونية"""
         return {
@@ -284,8 +284,8 @@ class ExplainableAIAgent:
             "reporting_requirements": "قد يتطلب الإبلاغ للجهات الرقابية حسب شدة الحالة",
             "statute_of_limitations": "تختلف مدة التقادم حسب نوع الجريمة"
         }
-    
-    def generate_audit_trail_explanation(self, 
+
+    def generate_audit_trail_explanation(self,
                                         audit_findings: List[Dict[str, Any]]) -> str:
         """توليد شرح لمسار التدقيق الكامل"""
         explanation_parts = [
@@ -297,18 +297,18 @@ class ExplainableAIAgent:
             "",
             "## التفاصيل"
         ]
-        
+
         for i, finding in enumerate(audit_findings, 1):
             explanation_parts.append(f"\n### نتيجة {i}")
             explanation_parts.append(f"- النوع: {finding.get('type', 'غير محدد')}")
             explanation_parts.append(f"- الوصف: {finding.get('description', 'لا يوجد وصف')}")
             explanation_parts.append(f"- مستوى الخطر: {finding.get('risk_level', 'غير محدد')}")
             explanation_parts.append(f"- التوصية: {finding.get('recommendation', 'لا توجد')}")
-        
+
         return "\n".join(explanation_parts)
-    
-    def export_explanation(self, 
-                          explanation: Dict[str, Any], 
+
+    def export_explanation(self,
+                          explanation: Dict[str, Any],
                           format: str = "json") -> str:
         """تصدير الشرح بصيغة محددة"""
         if format == "json":
@@ -317,7 +317,7 @@ class ExplainableAIAgent:
             return self._to_text_format(explanation)
         else:
             return json.dumps(explanation, indent=2, ensure_ascii=False)
-    
+
     def _to_text_format(self, explanation: Dict[str, Any]) -> str:
         """تحويل الشرح إلى نص مقروء"""
         lines = [
@@ -332,20 +332,20 @@ class ExplainableAIAgent:
             "",
             "العوامل الرئيسية:"
         ]
-        
+
         for factor in explanation.get('key_factors', []):
             lines.append(f"  • {factor}")
-        
+
         lines.extend([
             "",
             "التوصيات:"
         ])
-        
+
         for rec in explanation.get('recommendations', []):
             lines.append(f"  • {rec}")
-        
+
         lines.append("=" * 60)
-        
+
         return "\n".join(lines)
 
 
@@ -354,10 +354,10 @@ if __name__ == "__main__":
     print("=" * 60)
     print("Finovate Audit Nexus AI - Explainable AI Agent")
     print("=" * 60)
-    
+
     # إنشاء وكيل XAI
     xai_agent = ExplainableAIAgent()
-    
+
     # مثال: شرح قرار كشف احتيال
     fraud_context = {
         "transaction_id": "TXN-2025-001234",
@@ -373,25 +373,25 @@ if __name__ == "__main__":
         "round_amounts": True,
         "unusual_timing": True
     }
-    
+
     fraud_result = {
         "risk_score": 87.5,
         "patterns": ["duplicate_entries", "round_amounts", "unusual_timing"],
         "behavioral_flags": ["after_hours_transaction", "high_frequency"],
         "violations": ["احتيال مالي محتمل", "تلاعب بالسجلات"]
     }
-    
+
     print("\n📊 شرح قرار كشف الاحتيال:\n")
     explanation = xai_agent.explain_decision(
         decision="Fraud Detected - High Risk Transaction",
         context=fraud_context,
         confidence_score=0.92
     )
-    
+
     print(xai_agent.export_explanation(explanation, format="text"))
-    
+
     print("\n\n🔍 تحليل مفصل لكشف الاحتيال:\n")
     detailed_fraud_explanation = xai_agent.explain_fraud_detection(fraud_result)
     print(json.dumps(detailed_fraud_explanation, indent=2, ensure_ascii=False))
-    
+
     print("\n\n✅ تم توليد شرح تفصيلي لقرار الذكاء الاصطناعي بنجاح!")

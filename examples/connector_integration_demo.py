@@ -10,10 +10,10 @@ import os
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from connectors.sap_connector import SAPConnector
-from connectors.oracle_connector import OracleConnector
-from connectors.quickbooks_connector import QuickBooksConnector
-from database.models import Company, AuditProject
+from connectors.sap_connector.connector import SAPErpConnector, SAPConnectionConfig
+from connectors.oracle_connector.connector import OracleErpConnector, OracleConnectionConfig
+from connectors.quickbooks_connector.connector import QuickBooksConnector
+from backend.database.models import Company, AuditProject
 
 
 def main():
@@ -26,21 +26,24 @@ def main():
     print("🔷 SAP ERP Connection Test")
     print("-" * 40)
     try:
-        sap = SAPConnector(
+        sap = SAPErpConnector(SAPConnectionConfig(
             host="sap.example.com",
+            system_number="00",
             client="100",
-            user="demo_user",
+            username="demo_user",
             password="***",
-            system="DEV"
-        )
+            language="EN"
+        ))
+        sap.connect()
         
+        sys_info = sap.test_connection().get("system_info", {})
         print(f"   Status: ✅ Connected")
-        print(f"   System: {sap.get_system_info()}")
+        print(f"   System: {sys_info}")
         print(f"   Available Modules: FI, CO, MM, SD")
         
         # Simulate data fetch
         print("\n   📊 Fetching General Ledger data...")
-        gl_data = sap.fetch_general_ledger(company_code="1000", fiscal_year="2024")
+        gl_data = sap.get_general_ledger(account="*", company_code="1000", fiscal_year="2024")
         print(f"   Records Retrieved: {len(gl_data)} entries")
         print(f"   Date Range: 2024-01-01 to 2024-12-31")
         
@@ -53,22 +56,23 @@ def main():
     print("🔶 Oracle EBS Connection Test")
     print("-" * 40)
     try:
-        oracle = OracleConnector(
+        oracle = OracleErpConnector(OracleConnectionConfig(
             host="oracle.example.com",
             port=1521,
             service_name="EBS_PROD",
-            user="apps",
+            username="apps",
             password="***"
-        )
+        ))
+        oracle.connect()
         
         print(f"   Status: ✅ Connected")
         print(f"   Database: Oracle EBS Production")
         print(f"   Version: 12.2.9")
         
         # Simulate data fetch
-        print("\n   📊 Fetching Accounts Payable data...")
-        ap_data = oracle.fetch_accounts_payable(org_id="204")
-        print(f"   Records Retrieved: {len(ap_data)} invoices")
+        print("\n   📊 Fetching Journal Entries data...")
+        ap_data = oracle.get_journal_entries(ledger_id=204, period_name="2024-01")
+        print(f"   Records Retrieved: {len(ap_data)} entries")
         print(f"   Total Amount: $1,245,678.90")
         
     except Exception as e:
@@ -80,11 +84,13 @@ def main():
     print("🟩 QuickBooks Online Connection Test")
     print("-" * 40)
     try:
-        qb = QuickBooksConnector(
-            company_id="QB123456",
-            access_token="***",
-            refresh_token="***"
-        )
+        qb = QuickBooksConnector({
+            "realm_id": "QB123456",
+            "access_token": "***",
+            "refresh_token": "***",
+            "client_id": "",
+            "client_secret": ""
+        })
         
         print(f"   Status: ✅ Connected")
         print(f"   Company: Demo Company Inc.")
@@ -92,8 +98,9 @@ def main():
         
         # Simulate data fetch
         print("\n   📊 Fetching Financial Statements...")
-        balance_sheet = qb.fetch_balance_sheet()
-        income_statement = qb.fetch_income_statement()
+        fin_data = qb.get_financial_statements(date_from="2024-01-01", date_to="2024-12-31")
+        balance_sheet = fin_data.get("balance_sheet", {})
+        income_statement = fin_data.get("income_statement", {})
         
         print(f"   Balance Sheet: ✅ Retrieved")
         print(f"   Income Statement: ✅ Retrieved")
@@ -157,8 +164,7 @@ def main():
     
     company = Company(
         name="Demo Corporation",
-        industry="Technology",
-        fiscal_year_end="12-31",
+        fiscal_year_start=1,
         currency="USD"
     )
     

@@ -5,8 +5,9 @@ Enterprise AI Financial Audit & Intelligence Platform
 """
 
 import os
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 try:
@@ -16,7 +17,7 @@ except ImportError:
     AsyncOpenAI = None
     OpenAI = None
 
-from backend.ai_engine.llm_interface import LLMInterface, LLMResponse, LLMMessage
+from backend.ai_engine.llm_interface import LLMInterface, LLMMessage, LLMResponse
 
 
 class OpenAIProvider(LLMInterface):
@@ -220,7 +221,7 @@ class OpenAIProvider(LLMInterface):
         try:
             logger.info("Validating OpenAI connection")
 
-            response = await self.client.chat.completions.create(
+            _response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": "Hello"}],
                 max_tokens=10

@@ -1,296 +1,115 @@
-# 🐳 Finovate Audit Nexus AI - Docker Configuration
+# Finovate Audit Nexus AI - Docker Compose
+version: "3.9"
 
-## نظرة عامة
-
-هذا الدليل يوضح كيفية تشغيل النظام باستخدام Docker.
-
-## المتطلبات
-
-- Docker 20.10+
-- Docker Compose 2.0+
-- Python 3.10+ (للتطوير المحلي)
-
-## البنية المعمارية
-
-```
-┌─────────────────────────────────────────────────────┐
-│                  Docker Network                      │
-│                                                      │
-│  ┌──────────────┐    ┌──────────────┐               │
-│  │   Frontend   │    │   Backend    │               │
-│  │   (PySide6)  │◄──►│   (FastAPI)  │               │
-│  │   :5000      │    │   :8000      │               │
-│  └──────────────┘    └──────────────┘               │
-│                          │                           │
-│                          ▼                           │
-│                   ┌──────────────┐                  │
-│                   │  PostgreSQL  │                  │
-│                   │     :5432    │                  │
-│                   └──────────────┘                  │
-│                                                      │
-└─────────────────────────────────────────────────────┘
-```
-
-## التشغيل السريع
-
-### 1. بناء وتشغيل الحاويات
-
-```bash
-# بناء جميع الخدمات
-docker-compose build
-
-# تشغيل في وضع الخلفية
-docker-compose up -d
-
-# عرض السجلات
-docker-compose logs -f
-```
-
-### 2. الوصول للتطبيق
-
-- **الواجهة الأمامية**: http://localhost:5000
-- **واجهة API**: http://localhost:8000
-- **توثيق API**: http://localhost:8000/docs
-- **قاعدة البيانات**: localhost:5432
-
-### 3. إيقاف النظام
-
-```bash
-# إيقاف جميع الخدمات
-docker-compose down
-
-# إيقاف وحذف البيانات (احذر!)
-docker-compose down -v
-```
-
-## تكوين الخدمات
-
-### قاعدة البيانات (PostgreSQL)
-
-```yaml
-services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: finovate_audit
-      POSTGRES_USER: finovate
-      POSTGRES_PASSWORD: secure_password_123
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-```
-
-### الواجهة الخلفية (Backend)
-
-```yaml
 services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend
-    environment:
-      DATABASE_URL: postgresql://finovate:secure_password_123@db:5432/finovate_audit
-      SECRET_KEY: your-secret-key-here
-      DEBUG: "false"
-    depends_on:
-      - db
+      dockerfile: Dockerfile
+    container_name: finovate-backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
-```
-
-### الواجهة الأمامية (Frontend)
-
-```yaml
-services:
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    depends_on:
-      - backend
     environment:
-      BACKEND_URL: http://backend:8000
+      - DATABASE_URL=postgresql://${DB_USER:-finovate}:${DB_PASSWORD:-finovate}@db:5432/${DB_NAME:-finovate_audit}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-me-32-char-key!}
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_started
+    volumes:
+      - ./logs:/app/logs
+      - ./exports:/app/exports
+      - ./uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - finovate-net
+
+  db:
+    image: postgres:15-alpine
+    container_name: finovate-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DB_USER:-finovate}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-finovate}
+      - POSTGRES_DB=${DB_NAME:-finovate_audit}
     ports:
-      - "5000:5000"
-```
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finovate"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finovate-net
 
-## متغيرات البيئة
+  qdrant:
+    image: qdrant/qdrant:v1.7.0
+    container_name: finovate-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - finovate-net
 
-أنشئ ملف `.env` في الجذر:
+  redis:
+    image: redis:7-alpine
+    container_name: finovate-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis-data:/data
+    networks:
+      - finovate-net
 
-```bash
-# قاعدة البيانات
-DATABASE_URL=postgresql://finovate:secure_password_123@db:5432/finovate_audit
+  ollama:
+    image: ollama/ollama:latest
+    container_name: finovate-ollama
+    restart: unless-stopped
+    profiles:
+      - ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - finovate-net
 
-# الأمان
-SECRET_KEY=your-super-secret-key-change-in-production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+volumes:
+  postgres-data:
+  qdrant-data:
+  redis-data:
+  ollama-data:
 
-# API
-DEBUG=false
-API_PREFIX=/api/v1
-
-# AI
-OPENAI_API_KEY=your-openai-key
-ANTHROPIC_API_KEY=your-anthropic-key
-```
-
-## التطوير المحلي
-
-### تشغيل بدون Docker
-
-```bash
-# تثبيت المتطلبات
-pip install -r requirements.txt
-
-# تشغيل قاعدة البيانات (PostgreSQL محلي)
-# أو استخدام SQLite للتطوير
-
-# تشغيل الواجهة الخلفية
-uvicorn backend.api.main:app --reload --host 0.0.0.0 --port 8000
-
-# تشغيل الواجهة الأمامية
-python frontend/main_window.py
-```
-
-### تشغيل الاختبارات
-
-```bash
-# جميع الاختبارات
-pytest tests/ -v
-
-# اختبار مع التغطية
-pytest tests/ --cov=. --cov-report=html
-
-# تشغيل مثال
-python examples/demo_audit.py
-```
-
-## استكشاف الأخطاء
-
-### المشاكل الشائعة
-
-**1. فشل الاتصال بقاعدة البيانات:**
-```bash
-# تحقق من أن قاعدة البيانات تعمل
-docker-compose ps
-
-# عرض سجلات قاعدة البيانات
-docker-compose logs db
-```
-
-**2. منفذ مشغول:**
-```bash
-# تغيير المنفذ في docker-compose.yml
-ports:
-  - "8001:8000"  # بدلاً من 8000
-```
-
-**3. مشاكل البناء:**
-```bash
-# إعادة البناء بدون كاش
-docker-compose build --no-cache
-```
-
-## النسخ الاحتياطي
-
-### نسخ احتياطي لقاعدة البيانات
-
-```bash
-# إنشاء نسخة احتياطية
-docker-compose exec db pg_dump -U finovate finovate_audit > backup.sql
-
-# استعادة النسخة
-cat backup.sql | docker-compose exec -T db psql -U finovate finovate_audit
-```
-
-## الأداء
-
-### تحسين الأداء
-
-```yaml
-# في docker-compose.yml
-services:
-  backend:
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-```
-
-## الأمان
-
-### أفضل الممارسات
-
-1. **لا تستخدم كلمات مرور افتراضية في الإنتاج**
-2. **استخدم شبكات Docker المعزولة**
-3. **قم بتحديث الصور بانتظام**
-4. **استخدم Docker secrets للبيانات الحساسة**
-
-```bash
-# تحديث الصور
-docker-compose pull
-docker-compose up -d --force-recreate
-```
-
-## المراقبة
-
-### عرض السجلات
-
-```bash
-# جميع السجلات
-docker-compose logs -f
-
-# خدمة محددة
-docker-compose logs -f backend
-
-# آخر 100 سطر
-docker-compose logs --tail=100 backend
-```
-
-### المقاييس
-
-```bash
-# استخدام الموارد
-docker stats
-
-# معلومات مفصلة
-docker inspect <container_id>
-```
-
-## النشر في الإنتاج
-
-### متطلبات الإنتاج
-
-- استخدام HTTPS
-- قاعدة بيانات خارجية مُدارة
-- موازن حمل (Load Balancer)
-- نظام مراقبة (Prometheus/Grafana)
-- نسخ احتياطي تلقائي
-
-### مثال للنشر
-
-```bash
-# إنتاج
-docker-compose -f docker-compose.prod.yml up -d
-
-# مع scaling
-docker-compose up -d --scale backend=3
-```
-
-## الدعم
-
-للحصول على المساعدة:
-- افتح Issue في GitHub
-- راجع التوثيق في `/docs`
-- تحقق من السجلات
-
----
-
-**Finovate Audit Nexus AI** - منصة الذكاء الاصطناعي للمراجعة المالية
+networks:
+  finovate-net:
+    driver: bridge

@@ -14,7 +14,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="finovate-audit-nexus-ai",
-    version="1.0.0",
+    version="2.0.0",
     author="Finovate Team",
     author_email="info@finovate-audit.com",
     description="Enterprise AI Financial Audit Platform with 22 intelligent agents and 15 ERP connectors",
@@ -59,8 +59,9 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "finovate-audit=backend.core.cli:main",
-            "finovate-agent=agents.chief_agent.agent:run_agent",
+            "finovate=main:main",
+            "finovate-api=main:start_api_server",
+            "finovate-desktop=main:start_desktop_app",
         ],
     },
     include_package_data=True,

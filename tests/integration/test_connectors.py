@@ -4,13 +4,14 @@ Integration Tests for ERP Connectors
 Test all 10 ERP connectors and their integration with the system.
 """
 
+import os
 import pytest
 import sys
 from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime, timedelta
 
-# Add parent directory to path
-sys.path.insert(0, '/workspace/connectors')
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 
 class TestSAPConnector:

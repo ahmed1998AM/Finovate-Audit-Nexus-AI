@@ -6,6 +6,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Dict, List, Optional
+from frontend.api_client import get_client
+import threading
 
 
 class ConnectorManagerWindow:
@@ -142,75 +144,30 @@ class ConnectorManagerWindow:
         self.status_label.pack(side=tk.LEFT)
     
     def load_connectors(self):
-        """تحميل قائمة المتصلات"""
-        # بيانات تجريبية
-        self.connectors = [
-            {
-                "name": "SAP Production",
-                "system": "SAP",
-                "status": "connected",
-                "last_sync": "2024-01-15 10:30",
-                "records": "1,250,000",
-                "version": "7.5"
-            },
-            {
-                "name": "Oracle Finance",
-                "system": "Oracle",
-                "status": "connected",
-                "last_sync": "2024-01-15 09:45",
-                "records": "890,000",
-                "version": "19c"
-            },
-            {
-                "name": "Dynamics 365",
-                "system": "Dynamics",
-                "status": "connected",
-                "last_sync": "2024-01-15 11:00",
-                "records": "567,000",
-                "version": "2024"
-            },
-            {
-                "name": "Odoo Community",
-                "system": "Odoo",
-                "status": "disconnected",
-                "last_sync": "2024-01-14 16:20",
-                "records": "125,000",
-                "version": "16.0"
-            },
-            {
-                "name": "QuickBooks Online",
-                "system": "QuickBooks",
-                "status": "connected",
-                "last_sync": "2024-01-15 10:15",
-                "records": "45,000",
-                "version": "API v3"
-            },
-            {
-                "name": "Xero Accounting",
-                "system": "Xero",
-                "status": "error",
-                "last_sync": "2024-01-13 14:30",
-                "records": "32,000",
-                "version": "2.0"
-            },
-            {
-                "name": "Zoho Books",
-                "system": "Zoho",
-                "status": "connected",
-                "last_sync": "2024-01-15 08:00",
-                "records": "28,000",
-                "version": "Latest"
-            },
-            {
-                "name": "SQL Server DB",
-                "system": "SQL",
-                "status": "connected",
-                "last_sync": "2024-01-15 11:30",
-                "records": "2,100,000",
-                "version": "2022"
-            }
-        ]
-        
+        """تحميل قائمة المتصلات من API"""
+        self.connectors = []
+        try:
+            agents = get_client().get_agents()
+            raw = agents.get("agents", agents) if isinstance(agents, dict) else agents
+            for name, info in raw.items() if isinstance(raw, dict) else []:
+                status = info.get("status", "disconnected") if isinstance(info, dict) else "disconnected"
+                self.connectors.append({
+                    "name": name,
+                    "system": name.split("_")[0].title(),
+                    "status": "connected" if status == "active" else "disconnected",
+                    "last_sync": "",
+                    "records": "0",
+                    "version": "1.0",
+                })
+        except Exception:
+            pass
+        if not self.connectors:
+            self.connectors = [
+                {"name": "SAP", "system": "SAP", "status": "disconnected", "last_sync": "", "records": "0", "version": "-"},
+                {"name": "Oracle", "system": "Oracle", "status": "disconnected", "last_sync": "", "records": "0", "version": "-"},
+                {"name": "Dynamics", "system": "Dynamics", "status": "disconnected", "last_sync": "", "records": "0", "version": "-"},
+                {"name": "NetSuite", "system": "NetSuite", "status": "disconnected", "last_sync": "", "records": "0", "version": "-"},
+            ]
         self.refresh_tree()
         self.update_summary()
     
@@ -320,27 +277,35 @@ class ConnectorManagerWindow:
         self.status_label.config(text="جاري المزامنة...")
         self.parent.update()
         
-        import time
-        time.sleep(1)
+        def _sync():
+            try:
+                get_client().get_audits()
+                self.parent.after(0, lambda: (messagebox.showinfo("مزامنة", "تمت المزامنة مع الخادم بنجاح!"), self.status_label.config(text="جاهز")))
+            except Exception as e:
+                self.parent.after(0, lambda: (messagebox.showerror("خطأ", f"فشلت المزامنة: {str(e)}"), self.status_label.config(text="خطأ")))
         
-        messagebox.showinfo("مزامنة", "تمت المزامنة بنجاح!")
-        self.status_label.config(text="جاهز")
+        threading.Thread(target=_sync, daemon=True).start()
     
     def test_connection(self):
         """اختبار جميع الاتصالات"""
         self.status_label.config(text="جاري اختبار الاتصالات...")
         self.parent.update()
         
-        import time
-        time.sleep(1)
+        def _test():
+            results = "نتائج اختبار الاتصال:\n\n"
+            try:
+                health = get_client().health()
+                results += f"✅ API Server: {health.get('status', 'OK')}\n"
+            except Exception as e:
+                results += f"❌ API Server: {str(e)}\n"
+            try:
+                agents = get_client().get_agents()
+                results += f"✅ Agents: {len(agents.get('agents', agents)) if isinstance(agents, dict) else len(agents)} registered\n"
+            except Exception as e:
+                results += f"❌ Agents: {str(e)}\n"
+            self.parent.after(0, lambda: (messagebox.showinfo("اختبار الاتصال", results), self.status_label.config(text="جاهز")))
         
-        results = "نتائج اختبار الاتصال:\n\n"
-        for conn in self.connectors:
-            icon = "✅" if conn["status"] == "connected" else "❌"
-            results += f"{icon} {conn['name']}: {conn['status']}\n"
-        
-        messagebox.showinfo("اختبار الاتصال", results)
-        self.status_label.config(text="جاهز")
+        threading.Thread(target=_test, daemon=True).start()
     
     def test_selected(self):
         """اختبار المتصل المحدد"""
@@ -386,12 +351,11 @@ class ConnectorManagerWindow:
         self.status_label.config(text="جاري تحديث الحالة...")
         self.parent.update()
         
-        import time
-        time.sleep(0.5)
+        def _refresh():
+            self.load_connectors()
+            self.parent.after(0, lambda: (self.status_label.config(text="تم التحديث بنجاح"), messagebox.showinfo("تحديث", "تم تحديث حالة المتصلات")))
         
-        self.load_connectors()
-        self.status_label.config(text="تم التحديث بنجاح")
-        messagebox.showinfo("تحديث", "تم تحديث حالة المتصلات")
+        threading.Thread(target=_refresh, daemon=True).start()
 
 
 if __name__ == "__main__":

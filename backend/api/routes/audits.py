@@ -4,20 +4,22 @@ REST API endpoints for audit operations
 Enterprise AI Financial Audit & Intelligence Platform
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-from loguru import logger
 import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from backend.ai_engine.engine_v2 import get_ai_engine_v2
+from fastapi import APIRouter, Depends, HTTPException, Query
+from loguru import logger
+from sqlalchemy.orm import Session
+
+from agents.compliance_agent.enhanced_agent import EnhancedComplianceAgent
+from agents.fraud_agent.enhanced_agent import EnhancedFraudDetectionAgent
 from backend.agents.enhanced_agent_base import AgentResult
-from backend.agents.fraud_agent.enhanced_agent import EnhancedFraudDetectionAgent
-from backend.agents.compliance_agent.enhanced_agent import EnhancedComplianceAgent
+from backend.database import get_db
+from backend.database.models import AuditProject as AuditProjectModel
 
-router = APIRouter(prefix="/api/audits", tags=["audits"])
+router = APIRouter(prefix="/api/v1/audits", tags=["audits"])
 
-# In-memory storage for audit results (in production, use a database)
 audit_storage: Dict[str, Dict[str, Any]] = {}
 
 
@@ -65,20 +67,22 @@ class AuditResponse:
 async def start_audit(
     project_id: str,
     financial_data: Dict[str, Any],
-    audit_type: str = Query("full", regex="^(full|fraud|compliance|risk)$"),
+    audit_type: str = Query("full", pattern="^(full|fraud|compliance|risk)$"),
     standards: Optional[List[str]] = None,
-    llm_provider: Optional[str] = None
+    llm_provider: Optional[str] = None,
+    db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
     Start a new audit
-    
+
     Args:
         project_id: Project identifier
         financial_data: Financial data to audit
         audit_type: Type of audit (full, fraud, compliance, risk)
         standards: Accounting standards to check against
         llm_provider: Preferred LLM provider
-    
+        db: Database session
+
     Returns:
         Audit response with audit ID and status
     """
@@ -86,16 +90,18 @@ async def start_audit(
         audit_id = str(uuid.uuid4())
         logger.info(f"Starting audit: {audit_id}, type: {audit_type}")
 
-        # Create audit request
-        request = AuditRequest(
-            project_id=project_id,
-            financial_data=financial_data,
-            audit_type=audit_type,
-            standards=standards,
-            llm_provider=llm_provider
-        )
+        # Persist to database
+        try:
+            db_project = AuditProjectModel(
+                company_id=1, project_name=f"Audit {audit_type} - {audit_id[:8]}",
+                audit_type=audit_type, status="Running",
+                risk_level="Medium", scope=str(financial_data.get("description", ""))
+            )
+            db.add(db_project)
+            db.commit()
+        except Exception as e:
+            logger.warning(f"Could not persist audit to DB: {e}")
 
-        # Store audit in memory
         audit_storage[audit_id] = {
             "audit_id": audit_id,
             "project_id": project_id,
@@ -116,7 +122,6 @@ async def start_audit(
                 standards=standards or ["IFRS"]
             )
         else:
-            # Full audit - run both
             fraud_agent = EnhancedFraudDetectionAgent(llm_provider=llm_provider)
             compliance_agent = EnhancedComplianceAgent(llm_provider=llm_provider)
 
@@ -137,9 +142,17 @@ async def start_audit(
                 confidence_score=(fraud_result.confidence_score + compliance_result.confidence_score) / 2
             )
 
-        # Update audit status
         audit_storage[audit_id]["status"] = "completed" if result.success else "failed"
         audit_storage[audit_id]["result"] = result.to_dict()
+
+        # Persist results to DB
+        try:
+            if db_project:
+                db_project.status = "Completed" if result.success else "Failed"
+                db_project.results = {"audit_id": audit_id, "result": result.to_dict()}
+                db.commit()
+        except Exception as e:
+            logger.warning(f"Could not persist audit results to DB: {e}")
 
         logger.info(f"Audit completed: {audit_id}, success: {result.success}")
 
@@ -158,34 +171,27 @@ async def start_audit(
 
 
 @router.get("/{audit_id}/status")
-async def get_audit_status(audit_id: str) -> Dict[str, Any]:
-    """
-    Get the status of an audit
-    
-    Args:
-        audit_id: Audit identifier
-    
-    Returns:
-        Audit status and metadata
-    """
+async def get_audit_status(audit_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
     try:
-        if audit_id not in audit_storage:
-            raise HTTPException(status_code=404, detail="Audit not found")
-
-        audit = audit_storage[audit_id]
-        logger.info(f"Retrieved audit status: {audit_id}")
-
-        return {
-            "success": True,
-            "data": {
-                "audit_id": audit_id,
-                "status": audit["status"],
-                "created_at": audit["created_at"],
-                "project_id": audit["project_id"],
+        if audit_id in audit_storage:
+            audit = audit_storage[audit_id]
+            return {"success": True, "data": {
+                "audit_id": audit_id, "status": audit["status"],
+                "created_at": audit["created_at"], "project_id": audit["project_id"],
                 "audit_type": audit["audit_type"]
-            }
-        }
-
+            }}
+        try:
+            db_project = db.query(AuditProjectModel).filter(AuditProjectModel.id == int(audit_id)).first()
+            if db_project:
+                return {"success": True, "data": {
+                    "audit_id": audit_id, "status": db_project.status.lower() if db_project.status else "planning",
+                    "created_at": db_project.created_at.isoformat() if db_project.created_at else "",
+                    "project_id": str(db_project.company_id),
+                    "audit_type": db_project.audit_type or "full"
+                }}
+        except (ValueError, Exception):
+            pass
+        raise HTTPException(status_code=404, detail="Audit not found")
     except HTTPException:
         raise
     except Exception as e:
@@ -194,40 +200,27 @@ async def get_audit_status(audit_id: str) -> Dict[str, Any]:
 
 
 @router.get("/{audit_id}/results")
-async def get_audit_results(audit_id: str) -> Dict[str, Any]:
-    """
-    Get the results of a completed audit
-    
-    Args:
-        audit_id: Audit identifier
-    
-    Returns:
-        Audit results and analysis
-    """
+async def get_audit_results(audit_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
     try:
-        if audit_id not in audit_storage:
-            raise HTTPException(status_code=404, detail="Audit not found")
-
-        audit = audit_storage[audit_id]
-
-        if audit["status"] != "completed":
-            raise HTTPException(
-                status_code=400,
-                detail=f"Audit is still {audit['status']}"
-            )
-
-        logger.info(f"Retrieved audit results: {audit_id}")
-
-        return {
-            "success": True,
-            "data": {
-                "audit_id": audit_id,
-                "status": audit["status"],
-                "result": audit["result"],
-                "created_at": audit["created_at"]
-            }
-        }
-
+        if audit_id in audit_storage:
+            audit = audit_storage[audit_id]
+            if audit["status"] != "completed":
+                raise HTTPException(status_code=400, detail=f"Audit is still {audit['status']}")
+            return {"success": True, "data": {
+                "audit_id": audit_id, "status": audit["status"],
+                "result": audit["result"], "created_at": audit["created_at"]
+            }}
+        try:
+            db_project = db.query(AuditProjectModel).filter(AuditProjectModel.id == int(audit_id)).first()
+            if db_project and db_project.results:
+                return {"success": True, "data": {
+                    "audit_id": audit_id, "status": db_project.status.lower() if db_project.status else "completed",
+                    "result": db_project.results,
+                    "created_at": db_project.created_at.isoformat() if db_project.created_at else ""
+                }}
+        except (ValueError, Exception):
+            pass
+        raise HTTPException(status_code=404, detail="Audit not found")
     except HTTPException:
         raise
     except Exception as e:
@@ -241,40 +234,50 @@ async def list_audits(
     audit_type: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0)
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
     List audits with optional filtering
-    
+
     Args:
         project_id: Filter by project ID
         audit_type: Filter by audit type
         status: Filter by status
         limit: Maximum number of results
         offset: Number of results to skip
-    
+        db: Database session
+
     Returns:
         List of audits matching the filters
     """
     try:
+        # Merge in-memory audits with DB projects
         audits = list(audit_storage.values())
+        try:
+            db_projects = db.query(AuditProjectModel).order_by(AuditProjectModel.created_at.desc()).all()
+            for p in db_projects:
+                audits.append({
+                    "audit_id": f"DB-{p.id}",
+                    "project_id": str(p.company_id),
+                    "audit_type": p.audit_type or "full",
+                    "status": p.status.lower() if p.status else "planning",
+                    "created_at": p.created_at.isoformat() if p.created_at else "",
+                    "result": {"project_name": p.project_name, "risk_level": p.risk_level}
+                })
+        except Exception as e:
+            logger.debug(f"Could not load DB audits: {e}")
 
-        # Apply filters
         if project_id:
             audits = [a for a in audits if a["project_id"] == project_id]
         if audit_type:
             audits = [a for a in audits if a["audit_type"] == audit_type]
         if status:
-            audits = [a for a in audits if a["status"] == status]
+            audits = [a for a in audits if a.get("status") == status]
 
-        # Sort by creation date (newest first)
-        audits.sort(key=lambda x: x["created_at"], reverse=True)
-
-        # Apply pagination
+        audits.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         total = len(audits)
         audits = audits[offset:offset + limit]
-
-        logger.info(f"Listed {len(audits)} audits")
 
         return {
             "success": True,
@@ -292,28 +295,20 @@ async def list_audits(
 
 
 @router.delete("/{audit_id}")
-async def delete_audit(audit_id: str) -> Dict[str, Any]:
-    """
-    Delete an audit
-    
-    Args:
-        audit_id: Audit identifier
-    
-    Returns:
-        Success status
-    """
+async def delete_audit(audit_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
     try:
-        if audit_id not in audit_storage:
-            raise HTTPException(status_code=404, detail="Audit not found")
-
-        del audit_storage[audit_id]
-        logger.info(f"Deleted audit: {audit_id}")
-
-        return {
-            "success": True,
-            "data": {"message": "Audit deleted successfully"}
-        }
-
+        if audit_id in audit_storage:
+            del audit_storage[audit_id]
+            return {"success": True, "data": {"message": "Audit deleted successfully"}}
+        try:
+            db_project = db.query(AuditProjectModel).filter(AuditProjectModel.id == int(audit_id)).first()
+            if db_project:
+                db.delete(db_project)
+                db.commit()
+                return {"success": True, "data": {"message": "Audit deleted from database"}}
+        except (ValueError, Exception):
+            pass
+        raise HTTPException(status_code=404, detail="Audit not found")
     except HTTPException:
         raise
     except Exception as e:
@@ -322,30 +317,40 @@ async def delete_audit(audit_id: str) -> Dict[str, Any]:
 
 
 @router.get("/stats/summary")
-async def get_audit_summary() -> Dict[str, Any]:
+async def get_audit_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     Get summary statistics for all audits
-    
+
     Returns:
         Summary statistics
     """
     try:
         audits = list(audit_storage.values())
 
+        # Include DB project stats
+        try:
+            db_projects = db.query(AuditProjectModel).all()
+            for p in db_projects:
+                audits.append({
+                    "audit_id": f"DB-{p.id}",
+                    "status": p.status.lower() if p.status else "planning",
+                    "audit_type": p.audit_type or "full"
+                })
+        except Exception:
+            pass
+
         summary = {
             "total_audits": len(audits),
-            "completed_audits": len([a for a in audits if a["status"] == "completed"]),
-            "failed_audits": len([a for a in audits if a["status"] == "failed"]),
-            "running_audits": len([a for a in audits if a["status"] == "running"]),
+            "completed_audits": len([a for a in audits if a.get("status") in ("completed", "completed")]),
+            "failed_audits": len([a for a in audits if a.get("status") == "failed"]),
+            "running_audits": len([a for a in audits if a.get("status") in ("running", "running")]),
             "by_type": {
-                "fraud": len([a for a in audits if a["audit_type"] == "fraud"]),
-                "compliance": len([a for a in audits if a["audit_type"] == "compliance"]),
-                "full": len([a for a in audits if a["audit_type"] == "full"]),
-                "risk": len([a for a in audits if a["audit_type"] == "risk"])
+                "fraud": len([a for a in audits if a.get("audit_type") == "fraud"]),
+                "compliance": len([a for a in audits if a.get("audit_type") == "compliance"]),
+                "full": len([a for a in audits if a.get("audit_type") == "full"]),
+                "risk": len([a for a in audits if a.get("audit_type") == "risk"])
             }
         }
-
-        logger.info("Retrieved audit summary")
 
         return {
             "success": True,

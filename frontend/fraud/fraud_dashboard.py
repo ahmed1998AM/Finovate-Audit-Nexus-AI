@@ -1,253 +1,423 @@
-"""
-Finovate Audit Nexus AI - Fraud Detection Dashboard
-لوحة كشف الاحتيال والتحقيق الجنائي
-"""
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QGroupBox, QTabWidget, QTextEdit, QProgressBar,
     QHeaderView, QComboBox, QLineEdit, QDateEdit, QDialog, QDialogButtonBox,
-    QFormLayout, QMessageBox
+    QFormLayout, QMessageBox, QFrame
 )
 from PySide6.QtCore import Qt, QDate, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QColor
+from frontend.api_client import get_client
+from frontend.styles.design_system import DesignSystem, Color, Typography
+
 
 class FraudAlertDialog(QDialog):
-    """نافذة تفاصيل تنبيه احتيال"""
     def __init__(self, alert_data, parent=None):
         super().__init__(parent)
         self.alert_data = alert_data
-        self.setWindowTitle(f"تفاصيل تنبيه احتيال - {alert_data.get('id', 'N/A')}")
+        self.setWindowTitle(f"Fraud Alert - {alert_data.get('id', 'N/A')}")
         self.setMinimumSize(600, 500)
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {Color.BG_DARK};
+                color: {Color.TEXT_PRIMARY};
+            }}
+        """)
         self.setup_ui()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        
-        header = QLabel(f"🚨 تنبيه احتيال: {self.alert_data.get('type', 'Unknown')}")
-        header.setFont(QFont("Segoe UI", 16, QFont.Bold))
-        header.setStyleSheet("color: #e74c3c;")
+        layout.setSpacing(16)
+
+        header = QLabel(f"Fraud Alert: {self.alert_data.get('type', 'Unknown')}")
+        header.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {Color.ERROR};")
         layout.addWidget(header)
-        
-        details = QGroupBox("تفاصيل التنبيه")
+
+        details = QGroupBox("Alert Details")
+        details.setStyleSheet(f"""
+            QGroupBox {{
+                color: {Color.TEXT_PRIMARY}; font-weight: 600; font-size: 13px;
+                border: 1px solid {Color.BORDER}; border-radius: 8px;
+                padding: 16px; margin-top: 12px;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin; left: 12px; padding: 0 6px;
+            }}
+        """)
         details_layout = QFormLayout(details)
-        
+        details_layout.setSpacing(8)
+
         for key, value in self.alert_data.items():
-            label = QLabel(str(key).replace('_', ' ').title())
-            label.setFont(QFont("Segoe UI", 10, QFont.Bold))
-            value_label = QLabel(str(value))
-            value_label.setWordWrap(True)
-            details_layout.addRow(label, value_label)
-        
+            lbl = QLabel(str(key).replace('_', ' ').title())
+            lbl.setStyleSheet(f"color: {Color.TEXT_SECONDARY}; font-weight: 500; font-size: 12px;")
+            val = QLabel(str(value))
+            val.setStyleSheet(f"color: {Color.TEXT_PRIMARY}; font-size: 13px;")
+            val.setWordWrap(True)
+            details_layout.addRow(lbl, val)
+
         layout.addWidget(details)
 
-        actions = QGroupBox("إجراءات التحقيق")
+        actions = QGroupBox("Investigation Actions")
+        actions.setStyleSheet(f"""
+            QGroupBox {{
+                color: {Color.TEXT_PRIMARY}; font-weight: 600; font-size: 13px;
+                border: 1px solid {Color.BORDER}; border-radius: 8px;
+                padding: 16px; margin-top: 12px;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin; left: 12px; padding: 0 6px;
+            }}
+        """)
         actions_layout = QVBoxLayout(actions)
-        
+        actions_layout.setSpacing(10)
+
         self.action_combo = QComboBox()
         self.action_combo.addItems([
-            "بدء تحقيق مفصل",
-            "تجميد الحساب مؤقتاً",
-            "إرسال تقرير للإدارة",
-            "وضع في قائمة المراقبة",
-            "إغلاق التنبيه (False Positive)"
+            "Start detailed investigation",
+            "Temporarily freeze account",
+            "Send report to management",
+            "Add to watchlist",
+            "Close alert (False Positive)"
         ])
+        self.action_combo.setStyleSheet(f"background: {Color.BG_DARK}; color: {Color.TEXT_PRIMARY}; border: 1px solid {Color.BORDER}; border-radius: 6px; padding: 8px 12px; font-size: 13px;")
         actions_layout.addWidget(self.action_combo)
-        
+
         self.notes = QTextEdit()
-        self.notes.setPlaceholderText("أضف ملاحظات التحقيق هنا...")
+        self.notes.setPlaceholderText("Add investigation notes here...")
         self.notes.setMaximumHeight(100)
+        self.notes.setStyleSheet(f"background: {Color.BG_DARK}; color: {Color.TEXT_PRIMARY}; border: 1px solid {Color.BORDER}; border-radius: 6px; padding: 10px; font-size: 13px;")
         actions_layout.addWidget(self.notes)
-        
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        actions_layout.addWidget(buttons)
-        
+
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setObjectName("ghostButton")
+        cancel_btn.setFixedHeight(36)
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        ok_btn = QPushButton("Confirm")
+        ok_btn.setObjectName("primaryButton")
+        ok_btn.setFixedHeight(36)
+        ok_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(ok_btn)
+        actions_layout.addLayout(btn_layout)
+
         layout.addWidget(actions)
 
+
 class FraudDetectionDashboard(QWidget):
-    """لوحة كشف الاحتيال"""
     investigation_started = Signal(dict)
 
     def __init__(self):
         super().__init__()
+        self.setObjectName("FraudDetectionDashboard")
         self.setup_ui()
         self.load_alerts()
+        self.load_stats()
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
-        
+        main_layout.setContentsMargins(24, 24, 24, 24)
+        main_layout.setSpacing(16)
+
         header = QHBoxLayout()
-        title = QLabel("🕵️ كشف الاحتيال والتحقيق الجنائي")
-        title.setFont(QFont("Segoe UI", 18, QFont.Bold))
+        title = QLabel("Fraud Detection")
+        title.setStyleSheet(f"font-size: 22px; font-weight: 700; color: {Color.TEXT_PRIMARY};")
         header.addWidget(title)
         header.addStretch()
-        
-        self.export_btn = QPushButton("📤 تصدير التقرير")
-        self.export_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db; color: white;
-                padding: 10px 20px; border-radius: 5px; font-weight: bold;
-            }
-            QPushButton:hover { background-color: #2980b9; }
-        """)
+
+        self.export_btn = QPushButton("Export Report")
+        self.export_btn.setObjectName("primaryButton")
+        self.export_btn.setFixedHeight(36)
         header.addWidget(self.export_btn)
-        
+
         main_layout.addLayout(header)
-        
-        stats_layout = QHBoxLayout()
-        stats_layout.addWidget(self.create_stat_card("🔴 عالي", "12", "#e74c3c"))
-        stats_layout.addWidget(self.create_stat_card("🟠 متوسط", "28", "#f39c12"))
-        stats_layout.addWidget(self.create_stat_card("🟡 منخفض", "45", "#f1c40f"))
-        stats_layout.addWidget(self.create_stat_card("✅ تم التحقيق", "87", "#2ecc71"))
-        main_layout.addLayout(stats_layout)
-        
+
+        self.stats_layout = QHBoxLayout()
+        self.stats_layout.setSpacing(12)
+        self.stat_cards = []
+        for icon, lbl, color in [("High Risk", "...", Color.ERROR), ("Medium Risk", "...", Color.WARNING), ("Low Risk", "...", Color.INFO), ("Investigated", "...", Color.SUCCESS)]:
+            card, val = self.create_stat_card(icon, lbl, color)
+            self.stat_cards.append(val)
+            self.stats_layout.addWidget(card)
+        main_layout.addLayout(self.stats_layout)
+
         tabs = QTabWidget()
-        
+
         self.alerts_tab = self.create_alerts_table()
-        tabs.addTab(self.alerts_tab, "التنبيهات الحية")
-        
+        tabs.addTab(self.alerts_tab, "Live Alerts")
+
         self.cases_tab = self.create_cases_table()
-        tabs.addTab(self.cases_tab, "قضايا التحقيق")
-        
+        tabs.addTab(self.cases_tab, "Investigation Cases")
+
         self.patterns_tab = self.create_patterns_analysis()
-        tabs.addTab(self.patterns_tab, "تحليل الأنماط")
-        
+        tabs.addTab(self.patterns_tab, "Pattern Analysis")
+
         main_layout.addWidget(tabs)
 
     def create_stat_card(self, label, value, color):
-        card = QGroupBox()
+        card = QFrame()
+        card.setObjectName("FraudStatCard")
         card.setStyleSheet(f"""
-            QGroupBox {{
-                background-color: {color}20;
-                border: 2px solid {color};
-                border-radius: 10px;
-                font-weight: bold;
+            QFrame#FraudStatCard {{
+                background-color: {color}12;
+                border: 1px solid {color}40;
+                border-radius: 8px;
+                padding: 16px;
             }}
         """)
         layout = QVBoxLayout(card)
         layout.setAlignment(Qt.AlignCenter)
-        
+        layout.setSpacing(4)
+
         val_label = QLabel(value)
-        val_label.setFont(QFont("Segoe UI", 24, QFont.Bold))
-        val_label.setStyleSheet(f"color: {color};")
+        val_label.setStyleSheet(f"font-size: 26px; font-weight: 700; color: {color};")
         val_label.setAlignment(Qt.AlignCenter)
-        
-        desc_label = QLabel(label)
-        desc_label.setFont(QFont("Segoe UI", 12))
-        desc_label.setAlignment(Qt.AlignCenter)
-        
         layout.addWidget(val_label)
+
+        desc_label = QLabel(label)
+        desc_label.setStyleSheet(f"font-size: 11px; color: {Color.TEXT_SECONDARY}; font-weight: 500;")
+        desc_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(desc_label)
-        
-        return card
+
+        return card, val_label
 
     def create_alerts_table(self):
         widget = QWidget()
+        widget.setStyleSheet("background: transparent;")
         layout = QVBoxLayout(widget)
-        
+        layout.setContentsMargins(0, 12, 0, 0)
+
         filters = QHBoxLayout()
-        filters.addWidget(QLabel("تصفية حسب:"))
-        
+        filters.setSpacing(8)
+        filter_label = QLabel("Filter by:")
+        filter_label.setStyleSheet(f"color: {Color.TEXT_SECONDARY}; font-size: 13px; font-weight: 500;")
+        filters.addWidget(filter_label)
+
         type_filter = QComboBox()
-        type_filter.addItems(["الكل", "قيود وهمية", "تكرار مشبوه", "توقيت غير طبيعي"])
+        type_filter.addItems(["All", "Fake Entries", "Suspicious Duplicates", "Abnormal Timing"])
+        type_filter.setStyleSheet(f"background: {Color.BG_DARK}; color: {Color.TEXT_PRIMARY}; border: 1px solid {Color.BORDER}; border-radius: 6px; padding: 6px 10px; font-size: 12px;")
         filters.addWidget(type_filter)
-        
+
         risk_filter = QComboBox()
-        risk_filter.addItems(["الكل", "عالي", "متوسط", "منخفض"])
+        risk_filter.addItems(["All", "High", "Medium", "Low"])
+        risk_filter.setStyleSheet(f"background: {Color.BG_DARK}; color: {Color.TEXT_PRIMARY}; border: 1px solid {Color.BORDER}; border-radius: 6px; padding: 6px 10px; font-size: 12px;")
         filters.addWidget(risk_filter)
-        
+
         filters.addStretch()
         layout.addLayout(filters)
-        
-        table = QTableWidget()
-        table.setColumnCount(6)
-        table.setHorizontalHeaderLabels([
-            "ID", "النوع", "المخاطر", "الوصف", "التاريخ", "الإجراء"
+
+        self.alerts_table = QTableWidget()
+        self.alerts_table.setColumnCount(6)
+        self.alerts_table.setHorizontalHeaderLabels([
+            "ID", "Type", "Risk", "Description", "Date", "Action"
         ])
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        table.setAlternatingRowColors(True)
-        
-        layout.addWidget(table)
-        return table
+        self.alerts_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.alerts_table.setAlternatingRowColors(True)
+        self.alerts_table.verticalHeader().setVisible(False)
+        self.alerts_table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {Color.BG_MEDIUM};
+                color: {Color.TEXT_PRIMARY};
+                border: 1px solid {Color.BORDER};
+                border-radius: 8px;
+                gridline-color: {Color.BG_CARD};
+                font-size: 13px;
+            }}
+            QHeaderView::section {{
+                background-color: {Color.BG_CARD};
+                color: {Color.TEXT_SECONDARY};
+                font-weight: 600;
+                font-size: 12px;
+                padding: 10px 12px;
+                border: none;
+                border-bottom: 1px solid {Color.BORDER};
+                text-transform: uppercase;
+            }}
+        """)
+
+        layout.addWidget(self.alerts_table)
+        return widget
 
     def create_cases_table(self):
         widget = QWidget()
+        widget.setStyleSheet("background: transparent;")
         layout = QVBoxLayout(widget)
-        
-        table = QTableWidget()
-        table.setColumnCount(7)
-        table.setHorizontalHeaderLabels([
-            "رقم القضية", "النوع", "الحالة", "المحقق", "التقدم", "الأولوية", "تاريخ الفتح"
+        layout.setContentsMargins(0, 12, 0, 0)
+
+        self.cases_table = QTableWidget()
+        self.cases_table.setColumnCount(7)
+        self.cases_table.setHorizontalHeaderLabels([
+            "Case #", "Type", "Status", "Investigator", "Progress", "Priority", "Opened"
         ])
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        layout.addWidget(table)
-        
-        return table
+        self.cases_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.cases_table.verticalHeader().setVisible(False)
+        self.cases_table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {Color.BG_MEDIUM};
+                color: {Color.TEXT_PRIMARY};
+                border: 1px solid {Color.BORDER};
+                border-radius: 8px;
+                gridline-color: {Color.BG_CARD};
+                font-size: 13px;
+            }}
+            QHeaderView::section {{
+                background-color: {Color.BG_CARD};
+                color: {Color.TEXT_SECONDARY};
+                font-weight: 600;
+                font-size: 12px;
+                padding: 10px 12px;
+                border: none;
+                border-bottom: 1px solid {Color.BORDER};
+                text-transform: uppercase;
+            }}
+        """)
+        layout.addWidget(self.cases_table)
+
+        return widget
 
     def create_patterns_analysis(self):
         widget = QWidget()
+        widget.setStyleSheet("background: transparent;")
         layout = QVBoxLayout(widget)
-        
-        info = QLabel("📊 تحليل أنماط الاحتيال المكتشفة")
-        info.setFont(QFont("Segoe UI", 14))
+        layout.setContentsMargins(0, 12, 0, 0)
+
+        info = QLabel("Detected Fraud Patterns")
+        info.setStyleSheet(f"font-size: 15px; font-weight: 600; color: {Color.TEXT_PRIMARY}; padding-bottom: 8px;")
         layout.addWidget(info)
-        
-        patterns = QGroupBox("الأنماط الشائعة")
+
+        patterns = QGroupBox("Common Patterns")
+        patterns.setStyleSheet(f"""
+            QGroupBox {{
+                color: {Color.TEXT_PRIMARY}; font-weight: 600; font-size: 13px;
+                border: 1px solid {Color.BORDER}; border-radius: 8px;
+                padding: 16px; margin-top: 12px;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin; left: 12px; padding: 0 6px;
+            }}
+        """)
         patterns_layout = QVBoxLayout(patterns)
-        
+        patterns_layout.setSpacing(6)
+
         pattern_list = QTextEdit()
         pattern_list.setReadOnly(True)
-        pattern_list.append("• قيود يومية متكررة بنفس المبلغ تماماً")
-        pattern_list.append("• حركات بنكية في أوقات غير عمل رسمية")
-        pattern_list.append("• فواتير من موردين جدد بمبالغ كبيرة")
-        pattern_list.append("• تسويات يدوية متكررة في نهاية الفترة")
-        pattern_list.append("• اختلافات منهجية في جرد المخزون")
-        
+        pattern_list.setStyleSheet(f"""
+            QTextEdit {{
+                background-color: {Color.BG_DARK};
+                color: {Color.TEXT_PRIMARY};
+                border: 1px solid {Color.BORDER};
+                border-radius: 6px;
+                padding: 12px;
+                font-size: 13px;
+            }}
+        """)
+        pattern_list.append("• Recurring daily entries with identical amounts")
+        pattern_list.append("• Banking activity during non-official hours")
+        pattern_list.append("• Invoices from new vendors with large amounts")
+        pattern_list.append("• Frequent manual adjustments at period end")
+        pattern_list.append("• Systematic inventory count discrepancies")
+
         patterns_layout.addWidget(pattern_list)
         layout.addWidget(patterns)
-        
+
         return widget
 
+    def load_stats(self):
+        try:
+            data = get_client().get_dashboard_v1()
+            findings = data.get("findings", [])
+            high = sum(1 for f in findings if f.get("severity") in ("high", "critical"))
+            med = sum(1 for f in findings if f.get("severity") == "medium")
+            low = sum(1 for f in findings if f.get("severity") == "low")
+            done = sum(1 for f in findings if f.get("status") in ("Resolved", "Closed"))
+            vals = [str(high), str(med), str(low), str(done)]
+        except Exception:
+            vals = ["N/A"] * 4
+        for i, v in enumerate(vals):
+            if i < len(self.stat_cards):
+                self.stat_cards[i].setText(v)
+
     def load_alerts(self):
-        alerts = [
-            {"id": "FR-001", "type": "قيود وهمية", "risk": "عالي", "desc": "كشف 15 قيد مكرر", "date": "2025-01-15"},
-            {"id": "FR-002", "type": "تكرار مشبوه", "risk": "متوسط", "desc": "دفعات متكررة لمورد واحد", "date": "2025-01-14"},
-            {"id": "FR-003", "type": "توقيت غير طبيعي", "risk": "عالي", "desc": "قيود بعد ساعات العمل", "date": "2025-01-13"},
-        ]
-        
-        table = self.alerts_tab.findChild(QTableWidget)
-        if table:
-            for alert in alerts:
-                row = table.rowCount()
-                table.insertRow(row)
-                table.setItem(row, 0, QTableWidgetItem(alert['id']))
-                table.setItem(row, 1, QTableWidgetItem(alert['type']))
-                
-                risk_item = QTableWidgetItem(alert['risk'])
-                if alert['risk'] == "عالي":
-                    risk_item.setBackground(Qt.red)
-                    risk_item.setForeground(Qt.white)
-                elif alert['risk'] == "متوسط":
-                    risk_item.setBackground(Qt.yellow)
-                table.setItem(row, 2, risk_item)
-                
-                table.setItem(row, 3, QTableWidgetItem(alert['desc']))
-                table.setItem(row, 4, QTableWidgetItem(alert['date']))
-                
-                action_btn = QPushButton("🔍 تحقيق")
-                action_btn.clicked.connect(lambda checked, a=alert: self.show_alert_details(a))
-                table.setCellWidget(row, 5, action_btn)
+        try:
+            data = get_client().get_dashboard_v1()
+            raw = data.get("findings", [])
+        except Exception:
+            raw = []
+        alerts = []
+        for i, f in enumerate(raw):
+            sev = f.get("severity", "low")
+            risk_map = {"critical": "High", "high": "High", "medium": "Medium", "low": "Low"}
+            alerts.append({
+                "id": f"FND-{i+1:04d}",
+                "type": f.get("description", "")[:25],
+                "risk": risk_map.get(sev, "Low"),
+                "desc": f.get("description", ""),
+                "date": "",
+                "severity": sev,
+            })
+
+        table = self.alerts_table if hasattr(self, 'alerts_table') else None
+        if not table:
+            return
+
+        table.setRowCount(0)
+        risk_colors = {
+            "High": QColor(Color.ERROR),
+            "Medium": QColor(Color.WARNING),
+            "Low": QColor(Color.INFO),
+        }
+
+        for alert in alerts:
+            row = table.rowCount()
+            table.insertRow(row)
+            table.setRowHeight(row, 44)
+            table.setItem(row, 0, QTableWidgetItem(alert['id']))
+            table.setItem(row, 1, QTableWidgetItem(alert['type']))
+
+            risk_item = QTableWidgetItem(alert['risk'])
+            risk_item.setForeground(risk_colors.get(alert['risk'], QColor(Color.TEXT_SECONDARY)))
+            table.setItem(row, 2, risk_item)
+
+            table.setItem(row, 3, QTableWidgetItem(alert['desc']))
+            table.setItem(row, 4, QTableWidgetItem(alert['date']))
+
+            action_btn = QPushButton("Investigate")
+            action_btn.setObjectName("primaryButton")
+            action_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Color.BG_CARD}; color: {Color.TEXT_PRIMARY};
+                    border: 1px solid {Color.BORDER}; border-radius: 4px;
+                    padding: 4px 12px; font-size: 11px;
+                }}
+                QPushButton:hover {{ background-color: {Color.BORDER}; border-color: {Color.INFO}; }}
+            """)
+            action_btn.clicked.connect(lambda a=alert: self.show_alert_details(a))
+            table.setCellWidget(row, 5, action_btn)
 
     def show_alert_details(self, alert_data):
         dialog = FraudAlertDialog(alert_data, self)
         if dialog.exec() == QDialog.Accepted:
             action = dialog.action_combo.currentText()
             notes = dialog.notes.toPlainText()
-            QMessageBox.information(
-                self, "تم التسجيل",
-                f"الإجراء: {action}\nملاحظات: {notes}"
-            )
+            client = get_client()
+            if client._token:
+                result = client.execute_agent("fraud_agent", {
+                    "task_type": "investigate",
+                    "parameters": {
+                        "alert_id": alert_data.get("id"),
+                        "action": action,
+                        "notes": notes,
+                        "severity": alert_data.get("severity"),
+                    },
+                })
+                if result:
+                    QMessageBox.information(
+                        self, "Investigation",
+                        f"Action recorded via API.\n{result.get('message', '')}",
+                    )
+                else:
+                    QMessageBox.information(self, "Recorded", f"Action: {action}\nNotes: {notes}")
+            else:
+                QMessageBox.information(self, "Recorded", f"Action: {action}\nNotes: {notes}")
             self.investigation_started.emit(alert_data)

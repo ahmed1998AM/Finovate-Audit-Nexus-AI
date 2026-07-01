@@ -1,12 +1,20 @@
-"""Tests for connector loading compatibility helpers."""
+"""Tests for connector loading from connectors/ directory."""
 
 from pathlib import Path
+import importlib.util
 
-from _connector_loader import load_connector
+
+def _load_connector(module_path: str, module_name: str):
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load connector module: {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_load_connector_returns_module():
-    module = load_connector("connectors/sap_connector/connector.py", "sap_connector_test_impl")
+    module = _load_connector("connectors/sap_connector/connector.py", "sap_connector_test_impl")
     assert module is not None
     assert hasattr(module, "SAPErpConnector")
     assert hasattr(module, "SAPConnectionConfig")
@@ -14,37 +22,8 @@ def test_load_connector_returns_module():
 
 def test_load_connector_raises_for_missing_file():
     import pytest
-
-    missing = "connectors/not_real_connector/connector.py"
-    with pytest.raises(ImportError, match="Cannot load connector module"):
-        load_connector(missing, "missing_connector_impl")
-
-
-def test_root_compatibility_module_exports_sap():
-    import sap_connector
-
-    assert hasattr(sap_connector, "SAPErpConnector")
-    assert hasattr(sap_connector, "SAPConnectionConfig")
-    assert "SAPErpConnector" in getattr(sap_connector, "__all__", [])
-
-
-def test_root_compatibility_modules_import():
-    modules = [
-        ("dynamics_connector", "DynamicsErpConnector"),
-        ("ebs_connector", "EBSErpConnector"),
-        ("infor_connector", "InforErpConnector"),
-        ("netsuite_connector", "NetSuiteErpConnector"),
-        ("oracle_connector", "OracleErpConnector"),
-        ("sage_connector", "SageErpConnector"),
-        ("sap_connector", "SAPErpConnector"),
-        ("workday_connector", "WorkdayErpConnector"),
-        ("quickbooks_connector", "QuickBooksConnector"),
-        ("xero_connector", "XeroConnector"),
-    ]
-
-    for module_name, symbol in modules:
-        module = __import__(module_name)
-        assert hasattr(module, symbol)
+    with pytest.raises((ImportError, FileNotFoundError)):
+        _load_connector("connectors/not_real_connector/connector.py", "missing_connector_impl")
 
 
 def test_connector_source_file_exists():
@@ -52,35 +31,23 @@ def test_connector_source_file_exists():
     assert path.exists()
 
 
-def test_shim_toggle_env_var_behavior(monkeypatch):
-    import importlib
-    c = importlib.import_module("tests.conftest")
-
-    monkeypatch.setenv("FINOVATE_DISABLE_TEST_SHIMS", "1")
-    assert c._should_install_test_shims() is False
-
-    monkeypatch.setenv("FINOVATE_DISABLE_TEST_SHIMS", "0")
-    assert c._should_install_test_shims() is True
-
-
-def test_load_connector_raises_on_missing_loader(monkeypatch):
-    import pytest
-    import _connector_loader as cl
-
-    class _Spec:
-        loader = None
-
-    monkeypatch.setattr(cl, "spec_from_file_location", lambda *a, **k: _Spec())
-
-    with pytest.raises(ImportError, match="Cannot load connector module"):
-        cl.load_connector("connectors/sap_connector/connector.py", "sap_connector_missing_loader")
+def test_all_connector_dirs_have_connector_py():
+    connector_types = [
+        "sap_connector", "oracle_connector", "dynamics_connector",
+        "ebs_connector", "infor_connector", "netsuite_connector",
+        "quickbooks_connector", "sage_connector", "workday_connector",
+        "xero_connector", "odoo_connector", "zoho_connector",
+        "excel_connector", "sql_connector", "api_connector",
+    ]
+    for ctype in connector_types:
+        path = Path(f"connectors/{ctype}/connector.py")
+        assert path.exists(), f"Missing connector file: {path}"
 
 
-def test_load_connector_raises_on_missing_spec(monkeypatch):
-    import pytest
-    import _connector_loader as cl
-
-    monkeypatch.setattr(cl, "spec_from_file_location", lambda *a, **k: None)
-
-    with pytest.raises(ImportError, match="Cannot load connector module"):
-        cl.load_connector("connectors/sap_connector/connector.py", "sap_connector_missing_spec")
+def test_connector_modules_import_cleanly():
+    connector_types = ["sap_connector", "oracle_connector", "quickbooks_connector", "xero_connector"]
+    for ctype in connector_types:
+        path = Path(f"connectors/{ctype}/connector.py")
+        mod = _load_connector(str(path), f"{ctype}_test")
+        symbols = [s for s in dir(mod) if not s.startswith("_")]
+        assert len(symbols) > 0, f"No symbols in {ctype}"

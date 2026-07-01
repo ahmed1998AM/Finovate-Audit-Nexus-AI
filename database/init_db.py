@@ -5,23 +5,29 @@ Initializes the SQLite/PostgreSQL database for Finovate Audit Nexus AI.
 """
 import os
 import sys
-from sqlalchemy import create_all, create_engine
-from database.models.schema import Base
+import logging
 
-# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+logger = logging.getLogger(__name__)
 
 def init_db():
     """تهيئة قاعدة البيانات"""
+    from backend.database import init_db as backend_init
+    from backend.database import get_db_session
+    from backend.database.bootstrap import seed_default_data
+
     db_url = os.getenv("DATABASE_URL", "sqlite:///./finovate_audit.db")
-    print(f"🔄 Initializing database at: {db_url}")
-    
+    logger.info("Initializing database at: %s", db_url)
+
     try:
-        engine = create_engine(db_url)
-        Base.metadata.create_all(bind=engine)
-        print("✅ Database tables created successfully!")
+        backend_init()
+        logger.info("Database tables created successfully!")
+        with get_db_session() as session:
+            seed_default_data(session)
+        logger.info("Default data seeded successfully!")
     except Exception as e:
-        print(f"❌ Error initializing database: {e}")
+        logger.error("Error initializing database: %s", e)
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -5,18 +5,19 @@ Enterprise AI Financial Audit & Intelligence Platform
 """
 
 import os
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 try:
-    from groq import Groq, AsyncGroq
+    from groq import AsyncGroq, Groq
 except ImportError:
     logger.error("Groq library not installed. Install with: pip install groq")
     Groq = None
     AsyncGroq = None
 
-from backend.ai_engine.llm_interface import LLMInterface, LLMResponse, LLMMessage
+from backend.ai_engine.llm_interface import LLMInterface, LLMMessage, LLMResponse
 
 
 class GroqProvider(LLMInterface):
@@ -161,12 +162,8 @@ class GroqProvider(LLMInterface):
             raise
 
     async def embed_text(self, text: str) -> List[float]:
-        """
-        Generate embeddings for text
-        Note: Groq doesn't provide embeddings API yet
-        """
-        logger.warning("Groq does not provide embeddings API. Returning placeholder.")
-        return [0.0] * 1536  # Placeholder embedding
+        """Generate embeddings for text"""
+        raise NotImplementedError("Groq does not provide embeddings API. Use OpenAI or Gemini for embeddings instead.")
 
     async def list_models(self) -> List[str]:
         """List available Groq models"""
@@ -188,7 +185,7 @@ class GroqProvider(LLMInterface):
         try:
             logger.info("Validating Groq connection")
 
-            response = self.client.chat.completions.create(
+            _response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": "Hello"}],
                 max_tokens=10

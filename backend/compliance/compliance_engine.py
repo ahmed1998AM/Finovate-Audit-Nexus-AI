@@ -3,11 +3,10 @@ Finovate Audit Nexus AI - Compliance Engine
 محرك الالتزام بالقوانين واللوائح المحاسبية والضريبية
 """
 
-from typing import Dict, List, Any, Optional
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
-import re
+from typing import Any, Dict, List, Optional
 
 
 class ComplianceStatus(Enum):
@@ -39,7 +38,7 @@ class ComplianceEngine:
         self.rules = []
         self.findings = []
         self.compliance_score = 0
-        
+
         # تحميل القواعد الافتراضية
         self._load_egyptian_standards()
         self._load_ifrs_standards()
@@ -261,28 +260,28 @@ class ComplianceEngine:
     ) -> Dict[str, Any]:
         """
         تقييم الالتزام بالمعايير المحددة
-        
+
         Args:
             financial_data: البيانات المالية للتقييم
             standards: قائمة المعايير المطلوبة (Egyptian, IFRS, ISA, Tax)
-            
+
         Returns:
             نتائج التقييم الشامل
         """
         if standards is None:
             standards = ["Egyptian", "IFRS", "ISA", "Tax"]
-        
+
         self.findings = []
         applicable_rules = self._filter_rules_by_standards(standards)
-        
+
         for rule in applicable_rules:
             finding = self._evaluate_rule(rule, financial_data)
             if finding:
                 self.findings.append(finding)
-        
+
         # حساب درجة الالتزام
         self.compliance_score = self._calculate_compliance_score()
-        
+
         return {
             "assessment_date": datetime.now(),
             "standards_assessed": standards,
@@ -309,14 +308,14 @@ class ComplianceEngine:
         requirements = rule.get("requirements", [])
         unmet_requirements = []
         evidence = []
-        
+
         for req in requirements:
             is_met = self._check_requirement(req, data)
             if not is_met:
                 unmet_requirements.append(req)
             else:
                 evidence.append(f"✓ {req}")
-        
+
         if unmet_requirements:
             status = ComplianceStatus.NON_COMPLIANT
             severity = rule.get("severity", "MEDIUM")
@@ -326,7 +325,7 @@ class ComplianceEngine:
         else:
             status = ComplianceStatus.REQUIRES_REVIEW
             severity = "LOW"
-        
+
         return ComplianceFinding(
             rule_id=rule["id"],
             rule_name=rule["name"],
@@ -342,22 +341,22 @@ class ComplianceEngine:
         """التحقق من متطلب محدد"""
         # تحليل المتطلب وتنفيذ التحقق المناسب
         # هذا تبسيط - في الواقع يحتاج منطق أكثر تعقيداً
-        
+
         if "total_assets == total_liabilities" in requirement:
             assets = data.get("total_assets", 0)
             liabilities = data.get("total_liabilities", 0)
             equity = data.get("equity", 0)
             return abs(assets - (liabilities + equity)) < 0.01
-        
+
         if "revenue_recognition" in requirement:
             return "revenue" in data
-        
+
         if "depreciation" in requirement:
             return "depreciation_method" in data or "accumulated_depreciation" in data
-        
+
         if "vat" in requirement.lower():
             return "vat_payable" in data or "vat_receivable" in data
-        
+
         # افتراض الالتزام إذا لم يتم تحديد المتطلب
         return True
 
@@ -365,29 +364,29 @@ class ComplianceEngine:
         """توليد توصية للمعالجة"""
         if not unmet:
             return "No action required - fully compliant"
-        
+
         recommendations = {
             "IFRS 15": "Review revenue recognition policies and ensure five-step model application",
             "IFRS 16": "Recognize all leases on balance sheet as per IFRS 16 requirements",
             "VAT": "Ensure proper VAT calculation, documentation, and timely filing",
             "depreciation": "Apply consistent depreciation method based on asset useful life",
         }
-        
+
         for key, rec in recommendations.items():
             if key.lower() in rule["name"].lower():
                 return rec
-        
+
         return f"Address the following: {', '.join(unmet)}"
 
     def _calculate_compliance_score(self) -> float:
         """حساب درجة الالتزام الإجمالية"""
         if not self.findings:
             return 100.0
-        
+
         compliant_count = sum(
             1 for f in self.findings if f.status == ComplianceStatus.COMPLIANT
         )
-        
+
         return round((compliant_count / len(self.findings)) * 100, 2)
 
     def _generate_summary(self) -> Dict[str, Any]:
@@ -397,7 +396,7 @@ class ComplianceEngine:
         medium = sum(1 for f in self.findings if f.severity == "MEDIUM")
         low = sum(1 for f in self.findings if f.severity == "LOW")
         compliant = sum(1 for f in self.findings if f.status == ComplianceStatus.COMPLIANT)
-        
+
         return {
             "critical_findings": critical,
             "high_findings": high,
@@ -458,12 +457,12 @@ class ComplianceEngine:
             "detailed_findings": [self._finding_to_dict(f) for f in self.findings],
             "recommendations": self._get_priority_actions()
         }
-        
+
         if output_format == "json":
             return report
         elif output_format == "text":
             return self._format_report_as_text(report)
-        
+
         return report
 
     def _format_report_as_text(self, report: Dict) -> str:
@@ -483,10 +482,10 @@ class ComplianceEngine:
             "",
             "PRIORITY RECOMMENDATIONS:",
         ]
-        
+
         for i, rec in enumerate(report['recommendations'], 1):
             lines.append(f"  {i}. {rec}")
-        
+
         lines.append("=" * 80)
         return "\n".join(lines)
 
@@ -494,7 +493,7 @@ class ComplianceEngine:
 # مثال على الاستخدام
 if __name__ == "__main__":
     engine = ComplianceEngine()
-    
+
     # بيانات مالية اختبارية
     test_data = {
         "total_assets": 1000000,
@@ -504,8 +503,8 @@ if __name__ == "__main__":
         "vat_payable": 70000,
         "depreciation_method": "straight_line"
     }
-    
+
     # تقييم الالتزام
     results = engine.assess_compliance(test_data, standards=["Egyptian", "IFRS", "Tax"])
-    
+
     print(engine.generate_compliance_report(output_format="text"))

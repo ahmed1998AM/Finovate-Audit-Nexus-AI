@@ -1,402 +1,214 @@
-# 🚀 Finovate Audit Nexus AI
+# Finovate Audit Nexus AI
 
 ## Enterprise AI Financial Audit & Intelligence Platform
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Python](https://img.shields.io/badge/python-3.9+-green.svg)
-![License](https://img.shields.io/badge/license-Proprietary-red.svg)
-![Completion](https://img.shields.io/badge/completion-100%25-brightgreen.svg)
-![Tests](https://img.shields.io/badge/tests-36/36%20passing-brightgreen.svg)
-![Agents](https://img.shields.io/badge/agents-22/22%20active-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Python](https://img.shields.io/badge/python-3.11+-green.svg)
+![Tests](https://img.shields.io/badge/tests-724/724%20passing-brightgreen.svg)
+![Desktop](https://img.shields.io/badge/desktop-PySide6-blueviolet.svg)
+![Backend](https://img.shields.io/badge/backend-FastAPI-success.svg)
+![Agents](https://img.shields.io/badge/agents-22%20AI-orange.svg)
 
 ---
 
-## 📋 نظرة عامة
+## نظرة عامة
 
-منصة سطح مكتب احترافية تعمل بالذكاء الاصطناعي متعدد الوكلاء (Multi-Agent AI System) متخصصة في:
+منصة سطح مكتب احترافية تعمل بالذكاء الاصطناعي متعدد الوكلاء (Multi-Agent AI System) متخصصة في المراجعة المالية والتدقيق وكشف الاحتيال والامتثال الضريبي، مع 22 وكيل ذكي و 15 موصل لأنظمة ERP.
 
-- ✅ المراجعة المحاسبية الذكية
-- ✅ التدقيق المالي
-- ✅ التحليل المالي
-- ✅ اكتشاف الاحتيال
-- ✅ الامتثال الضريبي
-- ✅ تحليل المستندات المالية
-- ✅ المراجعة المستمرة
-- ✅ قراءة الأنظمة المحاسبية
-- ✅ تقييم المخاطر
-- ✅ التحليل التنفيذي
-- ✅ التحقيق المالي الجنائي
-- ✅ تطبيق سطح مكتب (Windows, macOS, Linux)
-
-**🎉 النظام مكتمل بنسبة 100% وجاهز للإنتاج المكتبي والسحابي!**
-
----
-
-## 🎯 المميزات الرئيسية
-
-### 🏢 15 Enterprise Connectors
-- SAP, Oracle ERP, Microsoft Dynamics, Odoo
-- Zoho Books, QuickBooks, Xero
-- SQL Databases, API, Excel
-- EBS, Infor, NetSuite, Sage, Workday
-
-### 🤖 22 AI Agents (متكاملة بالكامل)
-- **Chief Audit AI Agent** - القائد المركزي للمراجعة
-- **Journal Entry Audit Agent** - مراجعة قيود اليومية
-- **General Ledger Audit Agent** - مراجعة دفتر الأستاذ
-- **Trial Balance Audit Agent** - مراجعة ميزان المراجعة
-- **Financial Statements Audit Agent** - مراجعة القوائم المالية
-- **Tax Compliance AI Agent** - الامتثال الضريبي
-- **Bank & Treasury Audit Agent** - مراجعة الخزينة والبنوك
-- **Inventory Audit Agent** - مراجعة المخزون
-- **Fixed Assets Audit Agent** - مراجعة الأصول الثابتة
-- **Fraud Detection AI Agent** - كشف الاحتيال
-- **OCR & Document Intelligence Agent** - معالجة المستندات
-- **Compliance & Standards Agent** - الالتزام بالمعايير
-- **Behavioral Intelligence Agent** - الذكاء السلوكي
-- **Risk Scoring Agent** - تقييم المخاطر
-- **Forensic Accounting Agent** - المحاسبة الجنائية
-- **Explainable AI Agent** - الذكاء الاصطناعي القابل للتفسير
-- **AI Quality Assurance Agent** - ضمان جودة الذكاء الاصطناعي
-- **Executive Intelligence Agent** - الذكاء التنفيذي
-- **ERP Connector Agent** - إدارة المتصلات
-- **Continuous Audit Agent** - المراجعة المستمرة
-- **Financial Graph Intelligence Agent** - تحليل الرسوم البيانية المالية
-- **AI Copilot Agent** - المساعد الذكي
-
-### 🖥️ واجهة مستخدم احترافية كاملة (Hybrid UI)
-- **تطبيق سطح مكتب أصلي**: باستخدام PySide6 لأداء فائق.
-- **لوحة تحكم ويب مدمجة**: دمج تقنيات الويب (HTML5/Chart.js) داخل التطبيق المكتبي.
-- **42 مكون واجهة** شامل.
-- لوحة تحكم تفاعلية وتحليل مالي متقدم.
-- إدارة مشاريع المراجعة والمتصلات والتقارير.
-
-### 📊 أمثلة عملية جاهزة
-- demo_audit.py - مثال مراجعة شامل
-- tax_compliance_demo.py - الامتثال الضريبي
-- fraud_detection_demo.py - كشف الاحتيال
-- bank_reconciliation_demo.py - التسوية البنكية
-- financial_statements_demo.py - القوائم المالية
-- ocr_document_demo.py - معالجة المستندات
-- connector_integration_demo.py - تكامل المتصلات
+### المميزات الأساسية
+- تطبيق سطح مكتب PySide6 مع 11 صفحة واجهة
+- خادم FastAPI مع نقاط نهاية `/api/v1/*`
+- 22 وكيل AI (مراجعة، احتيال، امتثال، مخاطر، ...)
+- 15 موصل ERP (SAP, Oracle, QuickBooks, Xero, ...)
+- JWT Authentication + RBAC (6 أدوار، 25 صلاحية)
+- WebSocket للاتصال المباشر مع البث الجماعي
+- Webhook system للتكامل الخارجي
+- Event Bus داخلي للتواصل بين الخدمات
+- Caching layer (Redis + in-memory fallback)
+- Task Queue للمهام غير المتزامنة
+- Email/SMTP مع قوالب Jinja2 (عربي/إنجليزي)
+- i18n تدويل ثنائي اللغة (عربي / English)
+- TLS/HTTPS للإنتاج
+- تقارير PDF/HTML/Excel
+- **724 اختبار (0 fail)** — وحدات، تكامل، أداء، E2E
+- **Ruff linting: 0 خطأ**
 
 ---
 
-## 🏗️ البنية المعمارية
+## المتطلبات
 
-```
-Finovate_Audit_Nexus_AI/
-├── agents/             # 22 وكيل ذكي متكامل
-├── backend/
-│   ├── core/           # النواة المركزية
-│   ├── ai_engine/      # محرك الذكاء الاصطناعي
-│   ├── memory/         # نظام الذاكرة
-│   ├── security/       # الأمان والتشفير
-│   ├── orchestrator/   # تنسيق الوكلاء
-│   ├── analytics/      # التحليلات
-│   ├── compliance/     # الالتزام
-│   └── workflows/      # سير العمل
-├── connectors/         # 15 موصل ERP
-├── database/           # قاعدة البيانات والنماذج
-├── frontend/
-│   ├── dashboard/      # لوحة التحكم
-│   ├── financial_analysis/  # التحليل المالي
-│   ├── audit_projects/      # مشاريع المراجعة
-│   ├── connectors/          # إدارة المتصلات
-│   ├── reports/             # التقارير
-│   └── settings/            # الإعدادات
-├── examples/           # أمثلة عملية
-├── tests/              # 36 اختبار ناجح
-├── docs/               # 30 وثيقة شاملة
-├── scripts/            # Scripts البناء والتشغيل
-├── .github/workflows/  # CI/CD Pipeline
-├── docker-compose.yml  # Docker Configuration
-├── Dockerfile          # Docker Image
-├── main.py             # نقطة الدخول الرئيسية
-└── requirements.txt    # المتطلبات
-```
+- Python 3.11+
+- PySide6 (لواجهة سطح المكتب)
+- FastAPI + Uvicorn (للخادم)
+- SQLite (قاعدة بيانات افتراضية)
 
 ---
 
-## 🔧 التقنيات المستخدمة
+## التثبيت والتشغيل
 
-| القسم | التقنية |
-|-------|---------|
-| لغة البرمجة | Python 3.9+ |
-| Desktop UI | PySide6 + Qt |
-| Backend API | FastAPI |
-| AI Agents | LangGraph + CrewAI |
-| LLM Framework | LangChain |
-| Machine Learning | PyTorch |
-| Database | PostgreSQL / SQLite |
-| Vector DB | Qdrant |
-| OCR | PaddleOCR + Tesseract |
-| Containerization | Docker + Docker Compose |
-| CI/CD | GitHub Actions |
-| Encryption | AES-256 |
-| Authentication | JWT + MFA |
-
----
-
-## 📦 التثبيت
-
-### 1. استنساخ المستودع
 ```bash
-git clone https://github.com/AhmedMostafaIbrahim/finovate-audit-nexus-ai.git
-cd finovate-audit-nexus-ai
-```
-
-### 2. تثبيت المتطلبات
-```bash
+# تثبيت المتطلبات
 pip install -r requirements.txt
-```
 
-### 3. إعداد البيئة
-```bash
-cp .env.example .env
-# عدل ملف .env وأضف مفاتيح API الخاصة بك
-```
+# تشغيل الخادم وسطح المكتب معاً
+python main.py --all
 
-### 4. تشغيل التطبيق
-
-#### تشغيل خادم API
-```bash
-python main.py --api
-# أو
-python main.py --api --host 0.0.0.0 --port 8000
-```
-
-#### تشغيل تطبيق سطح المكتب
-```bash
+# تشغيل سطح المكتب فقط
 python main.py --desktop
-```
 
-#### تشغيل الاختبارات
-```bash
-python run_tests.py
+# تشغيل الخادم فقط
+python main.py --api
+
+# تشغيل الاختبارات
+python main.py --test
 # أو
 pytest tests/ -v
 ```
 
-### 5. التشغيل عبر Docker (موصى به للإنتاج)
+### Docker (Production)
 ```bash
-# بناء وتشغيل جميع الخدمات
-docker-compose build
+# تشغيل النظام بالكامل (خلفية + قاعدة بيانات + Redis + واجهة)
 docker-compose up -d
 
-# عرض السجلات
-docker-compose logs -f
-
-# إيقاف الخدمات
-docker-compose down
+# أو بناء وتشغيل الخلفية فقط
+docker build -t finovate-backend .
+docker run -p 8000:8000 --env-file .env finovate-backend
 ```
 
-### 6. البناء للتوزيع
-
-#### Windows
+### Quick Start (تطوير)
 ```bash
-cd scripts
-build_windows.bat
+# 1. إعداد المفاتيح السرية
+python -c "import secrets; open('.env','a').write(f'JWT_SECRET_KEY={secrets.token_hex(32)}\nENCRYPTION_KEY={secrets.token_hex(16)}\n')"
+
+# 2. تثبيت المتطلبات
+pip install -r requirements.txt
+
+# 3. تشغيل الخادم
+uvicorn backend.main:app --reload --port 8000
+
+# 4. تشغيل الاختبارات
+pytest -q
 ```
 
-#### Linux
-```bash
-cd scripts
-chmod +x build_linux.sh
-./build_linux.sh
-```
-
-#### macOS
-```bash
-cd scripts
-chmod +x build_macos.sh
-./build_macos.sh
-```
-
----
-
-## 🌐 API Endpoints
-
-بعد تشغيل خادم API، يمكنك الوصول إلى:
-
+### API Documentation
 - **Swagger UI**: http://localhost:8000/api/docs
 - **ReDoc**: http://localhost:8000/api/redoc
-- **OpenAPI JSON**: http://localhost:8000/api/openapi.json
-
-### نقاط النهاية الرئيسية:
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/v1/auth/login | تسجيل الدخول |
-| GET | /api/v1/companies | قائمة الشركات |
-| POST | /api/v1/audit-projects | إنشاء مشروع مراجعة |
-| GET | /api/v1/findings | نتائج المراجعة |
-| GET | /api/v1/agents | الوكلاء الذكية |
-| POST | /api/v1/documents/upload | رفع مستند |
-| GET | /api/v1/connectors | قائمة المتصلات |
-| POST | /api/v1/connectors/test | اختبار متصل |
-| GET | /api/v1/analytics/dashboard | لوحة التحليلات |
-| GET | /api/v1/reports/generate | توليد تقرير |
 
 ---
 
-## 🖥️ واجهة المستخدم
+## هيكل المشروع
 
-### النوافذ المتاحة:
-
-#### التحليل المالي
-- `dashboard_window.py` - لوحة التحليل المالي الشاملة
-- `ratio_analysis_window.py` - تحليل النسب المالية
-- `trend_analysis_window.py` - تحليل الاتجاهات
-
-#### مشاريع المراجعة
-- `project_list_window.py` - قائمة المشاريع
-- `project_detail_window.py` - تفاصيل المشروع
-- `create_project_wizard.py` - معالج الإنشاء
-
-#### الإدارة
-- `connector_manager.py` - إدارة المتصلات
-- `report_viewer.py` - عارض التقارير
-- `settings_window.py` - الإعدادات
+```
+Finovate-Audit-Nexus-AI/
+├── main.py                    # نقطة دخول وحيدة
+├── agents/                    # 22 وكيل ذكي
+├── backend/
+│   ├── main.py                # FastAPI app
+│   ├── api/endpoints/         # نقاط نهاية API
+│   ├── api/routes/            # مسارات إضافية
+│   ├── services/              # منطق الأعمال
+│   ├── orchestrator/          # تنسيق الوكلاء
+│   ├── ai_engine/             # محرك LLM
+│   ├── agents/                # فئات أساس الوكلاء
+│   ├── database/              # إعداد DB + نماذج
+│   └── security/              # الأمان والتشفير
+├── connectors/                # 15 موصل ERP
+├── frontend/
+│   ├── main_window.py         # النافذة الرئيسية
+│   ├── api_client.py          # عميل API موحد
+│   ├── components/            # مكونات واجهة مشتركة
+│   ├── dashboard/             # لوحة القيادة
+│   ├── executive/             # لوحة تنفيذية
+│   ├── reports/               # عارض التقارير
+│   ├── audit_projects/        # مشاريع التدقيق
+│   ├── agents/                # إدارة الوكلاء
+│   ├── fraud/                 # كشف الاحتيال
+│   ├── compliance/            # الامتثال
+│   ├── connectors/            # إدارة الموصلات
+│   ├── analytics/             # تحليلات
+│   ├── settings/              # الإعدادات
+│   ├── services/              # جلسة + مصادقة
+│   └── styles/                # نظام التصميم
+├── tests/                     # 159 اختبار
+│   ├── unit/                  # 88 اختبار وحدة
+│   ├── integration/           # 52 اختبار تكامل
+│   ├── e2e/                   # 5 اختبار E2E
+│   └── performance/           # 14 اختبار أداء
+├── scripts/                   # بناء وتوزيع
+├── docs/                      # وثائق
+└── _archive/                  # ملفات قديمة (مؤرشفة)
+```
 
 ---
 
-## 🔐 الأمان
+## API Endpoints
 
-- **AES-256 Encryption** - تشفير متقدم للبيانات
-- **JWT Authentication** - مصادقة آمنة
-- **Multi-Factor Authentication (MFA)** - مصادقة متعددة العوامل
-- **Role-Based Access Control (RBAC)** - تحكم بالصلاحيات
-- **Audit Logging** - تسجيل جميع العمليات
-- **Secure Backup** - نسخ احتياطي آمن
-- **Session Management** - إدارة الجلسات
+| Method | Endpoint | الوصف |
+|--------|----------|-------|
+| POST | `/api/v1/auth/login` | تسجيل الدخول |
+| POST | `/api/v1/auth/register` | تسجيل مستخدم جديد |
+| GET | `/api/v1/auth/me` | معلومات المستخدم الحالي |
+| POST | `/api/v1/auth/change-password` | تغيير كلمة المرور |
+| GET | `/api/v1/audit/dashboard` | بيانات لوحة القيادة |
+| GET | `/api/v1/audit/dashboard/summary-report` | تقرير ملخص |
+| GET | `/api/v1/audit/dashboard/recommendations` | توصيات |
+| GET | `/api/v1/audit-projects/` | قائمة مشاريع التدقيق |
+| POST | `/api/v1/audit-projects/` | إنشاء مشروع |
+| GET | `/api/v1/findings/` | نتائج المراجعة |
+| GET/POST | `/api/v1/agents/` | إدارة الوكلاء |
+| POST | `/api/v1/agents/execute` | تنفيذ وكيل |
+| GET/POST | `/api/v1/reports` | إدارة التقارير |
+| POST | `/api/v1/reports/create` | إنشاء تقرير |
+| POST | `/api/v1/reports/{id}/summary` | ملخص تقرير |
+| POST | `/api/v1/reports/{id}/export` | تصدير تقرير |
+| GET/POST | `/api/v1/connectors` | إدارة الموصلات |
+| DELETE | `/api/v1/connectors/{id}` | حذف موصل |
+| POST | `/api/v1/documents/upload` | رفع مستند |
+| POST | `/api/v1/audits/start` | بدء مراجعة |
+| GET | `/api/v1/ai/providers` | مزودي AI |
+| GET | `/api/v1/ai/status` | حالة AI |
 
 ---
 
-## 📊 معايير الدعم
+## صفحات الواجهة (11 صفحة)
 
-- ✅ المعايير المحاسبية المصرية
-- ✅ IFRS (المعايير الدولية للتقارير المالية)
-- ✅ ISA (المعايير الدولية للمراجعة)
-- ✅ قوانين الضرائب المصرية
-- ✅ VAT (ضريبة القيمة المضافة)
-- ✅ SOX (Sarbanes-Oxley)
-- ✅ GDPR (حماية البيانات)
+| الصفحة | المعرف | الوظيفة |
+|--------|--------|---------|
+| لوحة القيادة | `dashboard` | مؤشرات الأداء الرئيسية |
+| القيادة التنفيذية | `executive` | KPIs + توصيات الإدارة العليا |
+| التحليلات | `analytics` | تحليلات مالية سريعة |
+| وكلاء AI | `agents` | إدارة وتشغيل الوكلاء |
+| التقارير | `reports` | عرض وإنشاء وتصدير التقارير |
+| إدارة AI | `ai_management` | إعداد مزودي LLM |
+| الموصلات | `connectors` | إدارة موصلات ERP |
+| مشاريع التدقيق | `audit_projects` | CRUD كامل للمشاريع |
+| كشف الاحتيال | `fraud_detection` | تنبيهات وتحقيقات الاحتيال |
+| الامتثال | `compliance` | معايير وتقارير الامتثال |
+| الإعدادات | `settings` | إعدادات التطبيق والمظهر |
 
 ---
 
-## 📈 الإحصائيات
+## الإحصائيات الحالية
 
 | المقياس | القيمة |
 |---------|--------|
-| ملفات Python | 176 ملف |
-| أسطر الكود | ~34,810 سطر |
-| وكلاء ذكية | 22/22 ✅ |
-| ERP Connectors | 15/15 ✅ |
-| خدمات Backend | 9/9 ✅ |
-| نوافذ Frontend | 42 مكون ✅ |
-| أمثلة عملية | 8 أمثلة ✅ |
-| اختبارات | 36/36 ناجحة ✅ |
-| وثائق Markdown | 30 وثيقة ✅ |
-| نسبة الإكمال | **100%** ✅ |
+| ملفات Python النشطة | ~180 ملف |
+| أسطر الكود | ~35,000 سطر |
+| وكلاء ذكية | 22/22 |
+| موصلات ERP | 15/15 |
+| صفحات الواجهة | 11/11 |
+| اختبارات | **724/724 ناجحة** |
+| API Endpoints | 25+ نقطة نهاية |
+| خدمات Backend | 9 خدمات |
 
 ---
 
-## 🚀 حالات الاستخدام
-
-### 1. المراجعة المالية الشاملة
-```python
-from agents.chief_audit_agent import ChiefAuditAgent
-
-agent = ChiefAuditAgent()
-result = agent.audit_company(company_id="COMP001")
-print(result.report)
-```
-
-### 2. كشف الاحتيال
-```python
-from agents.fraud_detection_agent import FraudDetectionAgent
-
-fraud_agent = FraudDetectionAgent()
-alerts = fraud_agent.detect_fraud(transactions=data)
-print(f"Found {len(alerts)} suspicious transactions")
-```
-
-### 3. الامتثال الضريبي
-```python
-from agents.tax_compliance_agent import TaxComplianceAgent
-
-tax_agent = TaxComplianceAgent()
-compliance = tax_agent.check_compliance(company_id="COMP001")
-print(f"Tax Compliance Score: {compliance.score}%")
-```
-
-### 4. تحليل المستندات (OCR)
-```python
-from agents.ocr_agent import OCRAgent
-
-ocr = OCRAgent()
-data = ocr.process_invoice("invoice.pdf")
-print(f"Extracted: {data}")
-```
-
----
-
-## 👨‍💻 المطور
+## المطور
 
 **Ahmed Mostafa Ibrahim**
 - Brand: **Finovate – AHMED EG**
-- GitHub: [Ahmed Mostafa Ibrahim](https://github.com/AhmedMostafaIbrahim)
 - Email: gogom8870@gmail.com
-- Phone: +20 122 515 5329
-- Location: Egypt
 
 ---
-
-## 📄 الترخيص
 
 © 2025 Ahmed Mostafa Ibrahim — All Rights Reserved
-
-هذا البرنامج مملوك وخاص. لا يجوز نسخه أو توزيعه أو استخدامه لأغراض تجارية دون إذن كتابي من المطور.
-
----
-
-## 📞 الدعم الفني
-
-للحصول على الدعم الفني أو الاستفسارات:
-- Email: gogom8870@gmail.com
-- Phone: +20 122 515 5329
-- GitHub Issues: [Create an issue](https://github.com/AhmedMostafaIbrahim/finovate-audit-nexus-ai/issues)
-
----
-
-## 🙏 شكر وتقدير
-
-شكراً لاستخدامكم Finovate Audit Nexus AI!
-
-تم تطوير هذا النظام بأحدث تقنيات الذكاء الاصطناعي لتقديم أفضل تجربة مراجعة مالية ذكية.
-
----
-
-## 🔗 روابط مفيدة
-
-- [دليل التثبيت](docs/INSTALLATION.md)
-- [دليل المستخدم](docs/USER_GUIDE.md)
-- [توثيق API](docs/API_DOCUMENTATION.md)
-- [هندسة الوكلاء](docs/AGENT_ARCHITECTURE.md)
-- [دليل المتصلات](docs/CONNECTOR_GUIDE.md)
-- [الأمان](docs/SECURITY.md)
-- [النشر](docs/DEPLOYMENT.md)
-- [تقرير الإكمال](docs/IMPLEMENTATION_REPORT.md)
-
----
-
-<div align="center">
-
-**Developed with ❤️ by Ahmed Mostafa Ibrahim**
-
-© 2025 Finovate – AHMED EG
-
-**🎉 نظام مكتمل 100% وجاهز للإنتاج! 🎉**
-
-</div>

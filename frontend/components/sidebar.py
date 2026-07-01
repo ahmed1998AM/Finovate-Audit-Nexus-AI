@@ -1,147 +1,141 @@
-"""
-Finovate Audit Nexus AI - Sidebar Component
-الشريط الجانبي للتنقل بين صفحات التطبيق
-"""
-
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QFrame, 
+    QWidget, QVBoxLayout, QPushButton, QFrame,
     QLabel, QScrollArea, QSizePolicy
 )
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon, QFont
+from PySide6.QtCore import Qt, Signal
+
+from frontend.styles.design_system import Color
 
 
 class Sidebar(QFrame):
-    """الشريط الجانبي للتنقل"""
-    
     page_requested = Signal(str)
-    
+
+    NAV_ITEMS = [
+        ("dashboard", "لوحة القيادة"),
+        ("executive", "القيادة التنفيذية"),
+        ("analytics", "التحليلات"),
+        ("agents", "وكلاء AI"),
+        ("reports", "التقارير"),
+        ("ai_management", "إدارة AI"),
+        ("connectors", "الموصلات"),
+        ("audit_projects", "مشاريع التدقيق"),
+        ("fraud_detection", "كشف الاحتيال"),
+        ("compliance", "الامتثال"),
+        ("settings", "الإعدادات"),
+    ]
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("sidebar")
         self.setFixedWidth(250)
-        self.setup_ui()
-        
-    def setup_ui(self):
-        """إعداد واجهة الشريط الجانبي"""
+        self.current_page = None
+        self.nav_buttons = {}
+        self._setup_ui()
+
+    def _setup_ui(self):
+        self.setStyleSheet(f"""
+            #sidebar {{
+                background-color: {Color.BG_MEDIUM};
+                border-right: 1px solid {Color.BORDER};
+            }}
+            #sidebar QPushButton#navButton {{
+                background-color: transparent;
+                color: {Color.TEXT_SECONDARY};
+                border: none;
+                border-radius: 8px;
+                padding: 10px 14px;
+                text-align: left;
+                font-size: 13px;
+                font-weight: 500;
+            }}
+            #sidebar QPushButton#navButton:hover {{
+                background-color: {Color.BG_LIGHT};
+                color: {Color.TEXT_PRIMARY};
+            }}
+            #sidebar QScrollArea#navScrollArea {{
+                border: none;
+                background-color: transparent;
+            }}
+        """)
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 20, 10, 20)
-        layout.setSpacing(10)
-        
-        # شعار التطبيق
+        layout.setContentsMargins(8, 16, 8, 12)
+        layout.setSpacing(6)
+
         logo_label = QLabel("Finovate Audit\nNexus AI")
         logo_label.setObjectName("logoLabel")
-        logo_font = QFont("Segoe UI", 14, QFont.Bold)
-        logo_label.setFont(logo_font)
         logo_label.setAlignment(Qt.AlignCenter)
+        logo_label.setStyleSheet(f"""
+            color: {Color.TEXT_WHITE};
+            font-size: 16px;
+            font-weight: bold;
+            padding: 12px 8px;
+        """)
         layout.addWidget(logo_label)
-        
+
+        subtitle = QLabel("Enterprise Audit Platform")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet(f"color: {Color.TEXT_MUTED}; font-size: 10px; padding: 0 0 8px 0;")
+        layout.addWidget(subtitle)
+
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
-        line.setObjectName("separatorLine")
+        line.setStyleSheet(f"background-color: {Color.BORDER}; max-height: 1px; margin: 4px 10px;")
         layout.addWidget(line)
-        
-        # أزرار التنقل
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setObjectName("navScrollArea")
-        
+
         nav_widget = QWidget()
+        nav_widget.setStyleSheet("background: transparent;")
         nav_layout = QVBoxLayout(nav_widget)
-        nav_layout.setContentsMargins(0, 0, 0, 0)
-        nav_layout.setSpacing(5)
-        
-        # تعريف عناصر التنقل
-        nav_items = [
-            ("dashboard", "📊 لوحة التحكم", "لوحة التحكم الرئيسية"),
-            ("web_dashboard", "🌐 لوحة الويب", "لوحة التحكم الذكية المتطورة"),
-            ("analytics", "📈 التحليلات", "التحليلات المالية"),
-            ("agents", "🤖 الوكلاء", "إدارة الوكلاء الذكية"),
-            ("reports", "📑 التقارير", "عرض التقارير"),
-            ("ai_management", "🧠 الذكاء الاصطناعي", "إدارة مزودي AI"),
-            ("connectors", "🔗 الموصلات", "إدارة الموصلات"),
-            ("audit_projects", "📝 مشاريع المراجعة", "إدارة المشاريع"),
-            ("fraud_detection", "🔍 كشف الاحتيال", "تحليل الاحتيال"),
-            ("compliance", "⚖️ الامتثال", "الامتثال والمعايير"),
-            ("settings", "⚙️ الإعدادات", "إعدادات النظام"),
-        ]
-        
-        for page_id, title, tooltip in nav_items:
-            btn = self.create_nav_button(title, tooltip)
-            btn.clicked.connect(lambda checked, pid=page_id: self.page_requested.emit(pid))
+        nav_layout.setContentsMargins(0, 4, 0, 0)
+        nav_layout.setSpacing(2)
+
+        for page_id, title in self.NAV_ITEMS:
+            btn = QPushButton(title)
+            btn.setObjectName("navButton")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            btn.setMinimumHeight(38)
+            btn.clicked.connect(lambda pid=page_id: self._on_nav_clicked(pid))
             nav_layout.addWidget(btn)
-            
+            self.nav_buttons[page_id] = btn
+
         nav_layout.addStretch()
         scroll.setWidget(nav_widget)
-        layout.addWidget(scroll)
-        
-        # معلومات الإصدار
-        version_label = QLabel("v1.0.0")
-        version_label.setObjectName("versionLabel")
+        layout.addWidget(scroll, stretch=1)
+
+        bottom_line = QFrame()
+        bottom_line.setFrameShape(QFrame.HLine)
+        bottom_line.setStyleSheet(f"background-color: {Color.BORDER}; max-height: 1px; margin: 4px 10px;")
+        layout.addWidget(bottom_line)
+
+        version_label = QLabel("v2.0.0")
         version_label.setAlignment(Qt.AlignCenter)
+        version_label.setStyleSheet(f"color: {Color.TEXT_MUTED}; font-size: 11px; padding: 8px;")
         layout.addWidget(version_label)
-        
-    def create_nav_button(self, text, tooltip) -> QPushButton:
-        """إنشاء زر تنقل"""
-        btn = QPushButton(text)
-        btn.setObjectName("navButton")
-        btn.setToolTip(tooltip)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        btn.setMinimumHeight(45)
-        btn.setIconSize(QSize(20, 20))
-        
-        font = QFont("Segoe UI", 10)
-        btn.setFont(font)
-        
-        return btn
 
+    def _on_nav_clicked(self, page_id):
+        self.set_active(page_id)
+        self.page_requested.emit(page_id)
 
-class TopToolbar(QFrame):
-    """الشريط العلوي للأدوات السريعة"""
-    
-    quick_action_requested = Signal(str)
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setObjectName("topToolbar")
-        self.setFixedHeight(60)
-        self.setup_ui()
-        
-    def setup_ui(self):
-        """إعداد شريط الأدوات"""
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(15, 10, 15, 10)
-        layout.setSpacing(10)
-        
-        # عنوان الصفحة
-        title_label = QLabel("لوحة التحكم الرئيسية")
-        title_label.setObjectName("toolbarTitle")
-        title_font = QFont("Segoe UI", 14, QFont.Bold)
-        title_label.setFont(title_font)
-        layout.addWidget(title_label)
-        
-        layout.addStretch()
-        
-        # أزرار الإجراءات السريعة
-        quick_actions = [
-            ("new_audit", "➕ مراجعة جديدة", "بدء مراجعة جديدة"),
-            ("import_file", "📥 استيراد ملف", "استيراد بيانات من ملف"),
-            ("run_agents", "▶️ تشغيل الوكلاء", "تشغيل جميع الوكلاء"),
-        ]
-        
-        for action_id, icon_text, tooltip in quick_actions:
-            btn = QPushButton(f"{icon_text}")
-            btn.setObjectName("quickActionButton")
-            btn.setToolTip(tooltip)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedSize(40, 40)
-            btn.clicked.connect(lambda checked, aid=action_id: self.quick_action_requested.emit(aid))
-            layout.addWidget(btn)
-            
-        # زر المستخدم
-        user_btn = QPushButton("👤 Admin")
-        user_btn.setObjectName("userButton")
-        user_btn.setFixedSize(100, 40)
-        layout.addWidget(user_btn)
+    def set_active(self, page_id):
+        for pid, btn in self.nav_buttons.items():
+            if pid == page_id:
+                btn.setStyleSheet(f"""
+                    QPushButton#navButton {{
+                        background-color: {Color.PRIMARY}26;
+                        color: {Color.PRIMARY};
+                        border-left: 3px solid {Color.PRIMARY};
+                        border-radius: 8px;
+                        padding: 10px 14px;
+                        text-align: left;
+                        font-size: 13px;
+                        font-weight: 500;
+                    }}
+                """)
+            else:
+                btn.setStyleSheet("")

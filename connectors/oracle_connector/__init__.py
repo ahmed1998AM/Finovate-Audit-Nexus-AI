@@ -1,5 +1,5 @@
 """Oracle Connector for Finovate Audit Nexus AI"""
-from .connector import OracleErpConnector, OracleConnectionConfig
+from .connector import OracleConnectionConfig, OracleErpConnector
 
 __all__ = ['OracleErpConnector', 'OracleConnectionConfig']
 

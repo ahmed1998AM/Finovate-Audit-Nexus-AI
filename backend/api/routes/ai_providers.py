@@ -4,20 +4,21 @@ REST API endpoints for managing LLM providers
 Enterprise AI Financial Audit & Intelligence Platform
 """
 
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Any, List, Optional
 from loguru import logger
 
 from backend.ai_engine.engine_v2 import get_ai_engine_v2
 
-router = APIRouter(prefix="/api/ai", tags=["ai"])
+router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
 
 @router.get("/providers")
 async def get_providers() -> Dict[str, Any]:
     """
     Get list of all available AI providers
-    
+
     Returns:
         List of available providers with their information
     """
@@ -47,6 +48,41 @@ async def get_providers() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/providers/set-default")
+async def set_default_provider(
+    data: Dict[str, str]
+) -> Dict[str, Any]:
+    """
+    Set the default AI provider (alias for /select for frontend compatibility)
+
+    Args:
+        data: {"provider": "provider_name"}
+
+    Returns:
+        Success status and provider information
+    """
+    provider_name = data.get("provider", "")
+    if not provider_name:
+        raise HTTPException(status_code=400, detail="provider is required")
+    return await select_provider_internal(provider_name)
+
+
+async def select_provider_internal(provider_name: str, model_name: Optional[str] = None) -> Dict[str, Any]:
+    """Internal implementation shared by /select and /set-default"""
+    ai_engine = get_ai_engine_v2()
+    if not ai_engine.select_provider(provider_name, model_name):
+        raise HTTPException(status_code=400, detail=f"Failed to select provider: {provider_name}")
+    logger.info(f"Selected provider: {provider_name}")
+    return {
+        "success": True,
+        "data": {
+            "active_provider": ai_engine.active_provider,
+            "active_model": ai_engine.active_model,
+            "provider_info": ai_engine.get_provider_info(provider_name)
+        }
+    }
+
+
 @router.post("/providers/select")
 async def select_provider(
     provider_name: str,
@@ -54,34 +90,16 @@ async def select_provider(
 ) -> Dict[str, Any]:
     """
     Select an active AI provider
-    
+
     Args:
         provider_name: Name of the provider to activate
         model_name: Optional model name to use
-    
+
     Returns:
         Success status and provider information
     """
     try:
-        ai_engine = get_ai_engine_v2()
-
-        if not ai_engine.select_provider(provider_name, model_name):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to select provider: {provider_name}"
-            )
-
-        logger.info(f"Selected provider: {provider_name}")
-
-        return {
-            "success": True,
-            "data": {
-                "active_provider": ai_engine.active_provider,
-                "active_model": ai_engine.active_model,
-                "provider_info": ai_engine.get_provider_info(provider_name)
-            }
-        }
-
+        return await select_provider_internal(provider_name, model_name)
     except HTTPException:
         raise
     except Exception as e:
@@ -93,10 +111,10 @@ async def select_provider(
 async def test_provider(provider_name: str) -> Dict[str, Any]:
     """
     Test connection to an AI provider
-    
+
     Args:
         provider_name: Name of the provider to test
-    
+
     Returns:
         Test result with connection status
     """
@@ -143,7 +161,7 @@ async def test_provider(provider_name: str) -> Dict[str, Any]:
 async def get_ai_engine_status() -> Dict[str, Any]:
     """
     Get the status of the AI engine
-    
+
     Returns:
         Detailed AI engine status and statistics
     """
@@ -167,10 +185,10 @@ async def get_ai_engine_status() -> Dict[str, Any]:
 async def get_provider_models(provider_name: str) -> Dict[str, Any]:
     """
     Get available models for a specific provider
-    
+
     Args:
         provider_name: Name of the provider
-    
+
     Returns:
         List of available models
     """
@@ -208,10 +226,10 @@ async def get_provider_models(provider_name: str) -> Dict[str, Any]:
 async def get_provider_stats(provider_name: str) -> Dict[str, Any]:
     """
     Get usage statistics for a specific provider
-    
+
     Args:
         provider_name: Name of the provider
-    
+
     Returns:
         Usage statistics
     """
@@ -245,7 +263,7 @@ async def get_provider_stats(provider_name: str) -> Dict[str, Any]:
 async def get_ai_stats_summary() -> Dict[str, Any]:
     """
     Get summary statistics for all AI providers
-    
+
     Returns:
         Aggregated statistics across all providers
     """
@@ -281,7 +299,7 @@ async def get_ai_stats_summary() -> Dict[str, Any]:
 async def reset_ai_stats() -> Dict[str, Any]:
     """
     Reset AI engine statistics
-    
+
     Returns:
         Success status
     """
@@ -310,13 +328,13 @@ async def generate_text(
 ) -> Dict[str, Any]:
     """
     Generate text using the AI engine
-    
+
     Args:
         prompt: Input prompt
         provider: Optional provider name
         temperature: Sampling temperature
         max_tokens: Maximum tokens to generate
-    
+
     Returns:
         Generated text and metadata
     """
@@ -352,14 +370,14 @@ async def chat_completion(
 ) -> Dict[str, Any]:
     """
     Generate chat completion using the AI engine
-    
+
     Args:
         messages: List of messages in the conversation
         provider: Optional provider name
         system_prompt: Optional system prompt
         temperature: Sampling temperature
         max_tokens: Maximum tokens to generate
-    
+
     Returns:
         Chat completion response
     """

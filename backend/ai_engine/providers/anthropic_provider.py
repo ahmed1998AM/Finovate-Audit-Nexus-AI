@@ -5,8 +5,9 @@ Enterprise AI Financial Audit & Intelligence Platform
 """
 
 import os
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 try:
@@ -15,7 +16,7 @@ except ImportError:
     logger.error("Anthropic library not installed. Install with: pip install anthropic")
     anthropic = None
 
-from backend.ai_engine.llm_interface import LLMInterface, LLMResponse, LLMMessage
+from backend.ai_engine.llm_interface import LLMInterface, LLMMessage, LLMResponse
 
 
 class AnthropicProvider(LLMInterface):
@@ -105,7 +106,8 @@ class AnthropicProvider(LLMInterface):
         messages: List[LLMMessage],
         temperature: float = 0.7,
         max_tokens: int = 2000,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        top_p: float = 1.0
     ) -> LLMResponse:
         """Generate chat completion using Anthropic API"""
         try:
@@ -160,13 +162,8 @@ class AnthropicProvider(LLMInterface):
             raise
 
     async def embed_text(self, text: str) -> List[float]:
-        """
-        Generate embeddings for text
-        Note: Anthropic doesn't provide embeddings API, so we return a placeholder
-        """
-        logger.warning("Anthropic does not provide embeddings API. Returning placeholder.")
-        # In production, you might want to use a different embedding service
-        return [0.0] * 1536  # Placeholder embedding
+        """Generate embeddings for text"""
+        raise NotImplementedError("Anthropic does not provide embeddings API. Use OpenAI or Gemini for embeddings instead.")
 
     async def list_models(self) -> List[str]:
         """List available Anthropic models"""
@@ -190,7 +187,7 @@ class AnthropicProvider(LLMInterface):
         try:
             logger.info("Validating Anthropic connection")
 
-            response = self.client.messages.create(
+            _response = self.client.messages.create(
                 model=self.model,
                 max_tokens=10,
                 messages=[{"role": "user", "content": "Hello"}]

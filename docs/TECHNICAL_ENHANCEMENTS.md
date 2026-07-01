@@ -46,9 +46,12 @@ This document outlines the professional enhancements implemented to transform th
 
 ## 5. Advanced Features | ميزات متقدمة
 ### Enhancements | التحسينات
-- **Predictive Service:** Added statistical forecasting for revenue and risk trends.
-- **Report Service:** Automated generation of professional executive summaries in Markdown.
-- **CI/CD Readiness:** Added setup scripts and enhanced testing infrastructure.
+- **Predictive Service:** Statistical forecasting for revenue, fraud risk, and cash flow trends.
+- **Report Service:** Multi-format report generation (PDF with ReportLab, HTML, JSON, Excel with openpyxl).
+- **Notification Service:** Multi-channel delivery (Email, Slack, Teams, In-App) with fraud alerts and audit reminders.
+- **Desktop Application:** Complete PySide6 GUI with 27+ modules (dashboard, analytics, projects, agents, reports, settings, connectors, AI management).
+- **PyInstaller Build:** Ready-to-build `.spec` file for standalone EXE distribution (Windows, macOS, Linux).
+- **CI/CD Readiness:** Added setup scripts, GitHub Actions workflow, and 140 automated tests.
 
 ---
 

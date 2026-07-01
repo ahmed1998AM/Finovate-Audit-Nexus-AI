@@ -4,13 +4,14 @@ Unit Tests for AI Agents
 Test all 22 intelligent agents in the system.
 """
 
+import os
 import pytest
 import sys
 from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime, timedelta
 
-# Add parent directory to path
-sys.path.insert(0, '/workspace')
+# Add project root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 
 class TestFinancialAnalysisAgent:

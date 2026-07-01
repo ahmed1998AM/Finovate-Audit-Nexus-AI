@@ -5,18 +5,19 @@ Handles short-term and long-term memory for AI agents,
 including context management, conversation history, and knowledge storage.
 """
 
-from typing import Dict, List, Any, Optional
-from datetime import datetime
-from collections import deque
 import json
 import os
+from collections import deque
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 
 class MemoryManager:
     """
     Memory Manager for AI Agents
-    
+
     Responsibilities:
     - Short-term memory (conversation context)
     - Long-term memory (persistent storage)
@@ -28,24 +29,24 @@ class MemoryManager:
     def __init__(self, agent_id: str = "default"):
         self.agent_id = agent_id
         self.memory_id = f"memory_{agent_id}"
-        
+
         # Short-term memory (conversation history)
         self.short_term_memory = deque(maxlen=50)  # Last 50 messages
-        
+
         # Long-term memory (persistent)
         self.long_term_memory = []
         self.memory_file = f"database/memory_{agent_id}.json"
-        
+
         # Context management
         self.context_window_size = 4096  # tokens
         self.current_context_size = 0
-        
+
         # Working memory (current session)
         self.working_memory = {}
-        
+
         # Load existing memory
         self._load_memory()
-        
+
         logger.info(f"Memory Manager initialized: {self.memory_id}")
 
     def add_to_short_term(self, role: str, content: str, metadata: Optional[Dict] = None):
@@ -81,22 +82,22 @@ class MemoryManager:
         """Search long-term memory"""
         results = []
         query_lower = query.lower()
-        
+
         for entry in self.long_term_memory:
             if category and entry["category"] != category:
                 continue
-            
+
             # Search in key and value
             key_match = query_lower in str(entry["key"]).lower()
             value_match = query_lower in str(entry["value"]).lower()
-            
+
             if key_match or value_match:
                 entry["accessed_count"] += 1
                 results.append(entry)
-        
+
         # Sort by relevance (access count)
         results.sort(key=lambda x: x["accessed_count"], reverse=True)
-        
+
         logger.info(f"Long-term memory search: '{query}' found {len(results)} results")
         return results
 
@@ -117,16 +118,16 @@ class MemoryManager:
     def get_context(self, max_tokens: Optional[int] = None) -> List[Dict]:
         """Get current context for AI model"""
         messages = list(self.short_term_memory)
-        
+
         # Simple token estimation (1 token ≈ 4 characters)
         max_tokens = max_tokens or self.context_window_size
         estimated_tokens = sum(len(str(msg)) // 4 for msg in messages)
-        
+
         # Trim if exceeds context window
         while estimated_tokens > max_tokens and len(messages) > 1:
             messages.pop(0)
             estimated_tokens = sum(len(str(msg)) // 4 for msg in messages)
-        
+
         self.current_context_size = estimated_tokens
         return messages
 

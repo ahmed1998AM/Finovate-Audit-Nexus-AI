@@ -5,22 +5,28 @@ Enterprise AI Financial Audit & Intelligence Platform
 """
 
 import os
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from backend.ai_engine.llm_interface import LLMInterface, LLMProviderFactory, LLMMessage, LLMResponse
-from backend.ai_engine.providers.openai_provider import OpenAIProvider
+from backend.ai_engine.llm_interface import (
+    LLMInterface,
+    LLMMessage,
+    LLMProviderFactory,
+    LLMResponse,
+)
 from backend.ai_engine.providers.anthropic_provider import AnthropicProvider
 from backend.ai_engine.providers.gemini_provider import GeminiProvider
 from backend.ai_engine.providers.groq_provider import GroqProvider
 from backend.ai_engine.providers.ollama_provider import OllamaProvider
+from backend.ai_engine.providers.openai_provider import OpenAIProvider
 
 
 class AIEngineV2:
     """
     Enhanced AI Engine V2 - Multi-Provider LLM Management
-    
+
     Features:
     - Support for multiple LLM providers (OpenAI, Anthropic, Gemini, Groq, Ollama)
     - Provider switching and fallback mechanisms
@@ -34,26 +40,26 @@ class AIEngineV2:
         self.engine_id = "ai_engine_v2_001"
         self.name = "AI Engine V2"
         self.status = "initialized"
-        
+
         # Provider management
         self.providers: Dict[str, LLMInterface] = {}
         self.active_provider: Optional[str] = None
         self.active_model: Optional[str] = None
-        
+
         # Statistics
         self.tokens_used = 0
         self.requests_count = 0
         self.provider_stats: Dict[str, Dict[str, Any]] = {}
-        
+
         # Configuration
         self.config = self._load_config()
-        
+
         # Register providers
         self._register_providers()
-        
+
         # Initialize configured providers
         self._initialize_providers()
-        
+
         logger.info(f"{self.name} initialized: {self.engine_id}")
 
     def _load_config(self) -> Dict[str, Any]:
@@ -61,45 +67,45 @@ class AIEngineV2:
         config = {
             "providers": {},
             "default_provider": os.getenv("DEFAULT_LLM_PROVIDER", "openai"),
-            "fallback_providers": os.getenv("FALLBACK_LLM_PROVIDERS", "anthropic,gemini,groq").split(","),
+            "fallback_providers": os.getenv("FALLBACK_LLM_PROVIDERS", "ollama,anthropic,gemini,groq").split(","),
             "cache_enabled": os.getenv("LLM_CACHE_ENABLED", "true").lower() == "true",
             "cache_ttl": int(os.getenv("LLM_CACHE_TTL", "3600")),
             "max_retries": int(os.getenv("LLM_MAX_RETRIES", "3")),
             "timeout": int(os.getenv("LLM_TIMEOUT", "300"))
         }
-        
+
         # Load provider-specific configurations
         if os.getenv("OPENAI_API_KEY"):
             config["providers"]["openai"] = {
                 "api_key": os.getenv("OPENAI_API_KEY"),
                 "model": os.getenv("OPENAI_MODEL", "gpt-4")
             }
-        
+
         if os.getenv("ANTHROPIC_API_KEY"):
             config["providers"]["anthropic"] = {
                 "api_key": os.getenv("ANTHROPIC_API_KEY"),
                 "model": os.getenv("ANTHROPIC_MODEL", "claude-3-opus-20240229")
             }
-        
+
         if os.getenv("GOOGLE_API_KEY"):
             config["providers"]["gemini"] = {
                 "api_key": os.getenv("GOOGLE_API_KEY"),
                 "model": os.getenv("GEMINI_MODEL", "gemini-pro")
             }
-        
+
         if os.getenv("GROQ_API_KEY"):
             config["providers"]["groq"] = {
                 "api_key": os.getenv("GROQ_API_KEY"),
                 "model": os.getenv("GROQ_MODEL", "mixtral-8x7b-32768")
             }
-        
+
         # Ollama is local, so it doesn't need an API key
         config["providers"]["ollama"] = {
             "api_key": "local",
             "model": os.getenv("OLLAMA_MODEL", "llama2"),
             "base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         }
-        
+
         return config
 
     def _register_providers(self):
@@ -127,7 +133,7 @@ class AIEngineV2:
                         config["api_key"],
                         config["model"]
                     )
-                
+
                 self.providers[provider_name] = provider
                 self.provider_stats[provider_name] = {
                     "initialized": True,
@@ -158,20 +164,48 @@ class AIEngineV2:
             if provider_name not in self.providers:
                 logger.error(f"Provider '{provider_name}' not available")
                 return False
-            
+
             provider = self.providers[provider_name]
-            
+
             if model_name:
                 provider.model = model_name
-            
+
             self.active_provider = provider_name
             self.active_model = provider.model
-            
+
             logger.info(f"Selected provider: {provider_name}, model: {provider.model}")
             return True
         except Exception as e:
             logger.error(f"Error selecting provider: {str(e)}")
             return False
+
+    async def _try_provider(
+        self,
+        provider_name: str,
+        method: str,
+        **kwargs
+    ) -> LLMResponse:
+        """Try generating with a specific provider, returns None on failure"""
+        try:
+            if provider_name not in self.providers:
+                logger.warning(f"Provider '{provider_name}' not available")
+                return None
+            provider_instance = self.providers[provider_name]
+            if method == "generate_text":
+                response = await provider_instance.generate_text(**kwargs)
+            else:
+                response = await provider_instance.chat_completion(**kwargs)
+            self.tokens_used += response.tokens_used
+            self.requests_count += 1
+            if provider_name in self.provider_stats:
+                self.provider_stats[provider_name]["last_used"] = datetime.now()
+                self.provider_stats[provider_name]["total_tokens"] += response.tokens_used
+                self.provider_stats[provider_name]["total_requests"] += 1
+            self.status = "ready"
+            return response
+        except Exception as e:
+            logger.warning(f"Provider '{provider_name}' failed: {str(e)}")
+            return None
 
     async def generate_text(
         self,
@@ -182,7 +216,7 @@ class AIEngineV2:
         **kwargs
     ) -> LLMResponse:
         """
-        Generate text using the active or specified provider
+        Generate text using the active or specified provider with automatic fallback
         Args:
             prompt: Input prompt
             provider: Optional provider name (uses active provider if not specified)
@@ -192,39 +226,34 @@ class AIEngineV2:
         Returns:
             LLMResponse object
         """
-        try:
-            if provider is None:
-                provider = self.active_provider or self.config["default_provider"]
-            
-            if provider not in self.providers:
-                logger.error(f"Provider '{provider}' not available")
-                raise ValueError(f"Provider '{provider}' not available")
-            
-            provider_instance = self.providers[provider]
-            
-            logger.info(f"Generating text with provider: {provider}")
-            
-            response = await provider_instance.generate_text(
-                prompt=prompt,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs
+        if provider is None:
+            provider = self.active_provider or self.config["default_provider"]
+
+        # Build ordered provider list: preferred first, then fallbacks, then any available
+        provider_chain = [provider]
+        for fb in self.config.get("fallback_providers", []):
+            fb = fb.strip()
+            if fb and fb not in provider_chain:
+                provider_chain.append(fb)
+        for p in self.providers:
+            if p not in provider_chain:
+                provider_chain.append(p)
+
+        last_error = None
+        for pname in provider_chain:
+            result = await self._try_provider(
+                pname, "generate_text",
+                prompt=prompt, temperature=temperature,
+                max_tokens=max_tokens, **kwargs
             )
-            
-            # Update statistics
-            self.tokens_used += response.tokens_used
-            self.requests_count += 1
-            self.provider_stats[provider]["last_used"] = datetime.now()
-            self.provider_stats[provider]["total_tokens"] += response.tokens_used
-            self.provider_stats[provider]["total_requests"] += 1
-            
-            self.status = "ready"
-            return response
-        
-        except Exception as e:
-            logger.error(f"Error generating text: {str(e)}")
-            self.status = "error"
-            raise
+            if result is not None:
+                if pname != provider:
+                    logger.info(f"Fell back to provider '{pname}' after '{provider}' failed")
+                return result
+            last_error = "No available provider could handle the request"
+
+        self.status = "error"
+        raise ValueError(last_error)
 
     async def chat_completion(
         self,
@@ -236,7 +265,7 @@ class AIEngineV2:
         **kwargs
     ) -> LLMResponse:
         """
-        Generate chat completion using the active or specified provider
+        Generate chat completion using the active or specified provider with fallback
         Args:
             messages: List of LLMMessage objects
             provider: Optional provider name
@@ -247,40 +276,31 @@ class AIEngineV2:
         Returns:
             LLMResponse object
         """
-        try:
-            if provider is None:
-                provider = self.active_provider or self.config["default_provider"]
-            
-            if provider not in self.providers:
-                logger.error(f"Provider '{provider}' not available")
-                raise ValueError(f"Provider '{provider}' not available")
-            
-            provider_instance = self.providers[provider]
-            
-            logger.info(f"Generating chat completion with provider: {provider}")
-            
-            response = await provider_instance.chat_completion(
-                messages=messages,
-                system_prompt=system_prompt,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs
+        if provider is None:
+            provider = self.active_provider or self.config["default_provider"]
+
+        provider_chain = [provider]
+        for fb in self.config.get("fallback_providers", []):
+            fb = fb.strip()
+            if fb and fb not in provider_chain:
+                provider_chain.append(fb)
+        for p in self.providers:
+            if p not in provider_chain:
+                provider_chain.append(p)
+
+        for pname in provider_chain:
+            result = await self._try_provider(
+                pname, "chat_completion",
+                messages=messages, system_prompt=system_prompt,
+                temperature=temperature, max_tokens=max_tokens, **kwargs
             )
-            
-            # Update statistics
-            self.tokens_used += response.tokens_used
-            self.requests_count += 1
-            self.provider_stats[provider]["last_used"] = datetime.now()
-            self.provider_stats[provider]["total_tokens"] += response.tokens_used
-            self.provider_stats[provider]["total_requests"] += 1
-            
-            self.status = "ready"
-            return response
-        
-        except Exception as e:
-            logger.error(f"Error generating chat completion: {str(e)}")
-            self.status = "error"
-            raise
+            if result is not None:
+                if pname != provider:
+                    logger.info(f"Chat fell back to provider '{pname}' after '{provider}' failed")
+                return result
+
+        self.status = "error"
+        raise ValueError("No available provider could handle the chat completion request")
 
     async def embed_text(self, text: str, provider: Optional[str] = None) -> List[float]:
         """
@@ -294,21 +314,21 @@ class AIEngineV2:
         try:
             if provider is None:
                 provider = self.active_provider or self.config["default_provider"]
-            
+
             if provider not in self.providers:
                 raise ValueError(f"Provider '{provider}' not available")
-            
+
             provider_instance = self.providers[provider]
-            
+
             logger.info(f"Generating embeddings with provider: {provider}")
-            
+
             embedding = await provider_instance.embed_text(text)
-            
+
             self.requests_count += 1
             self.provider_stats[provider]["total_requests"] += 1
-            
+
             return embedding
-        
+
         except Exception as e:
             logger.error(f"Error generating embeddings: {str(e)}")
             raise
@@ -321,7 +341,7 @@ class AIEngineV2:
         """Get information about a specific provider"""
         if provider_name not in self.providers:
             return {}
-        
+
         provider = self.providers[provider_name]
         return provider.get_provider_info()
 

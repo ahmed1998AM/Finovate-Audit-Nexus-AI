@@ -1,43 +1,39 @@
-"""Tests fallback behavior for root compatibility connector modules."""
+"""Tests fallback behavior for connector modules."""
 
-import importlib
-import sys
-
-import _connector_loader
+import importlib.util
+from pathlib import Path
 
 
-def _reload_with_loader_failure(module_name: str, monkeypatch):
-    def _raiser(*args, **kwargs):
-        raise ModuleNotFoundError("optional SDK missing")
-
-    monkeypatch.setattr(_connector_loader, "load_connector", _raiser)
-    sys.modules.pop(module_name, None)
-    return importlib.import_module(module_name)
-
-
-def test_quickbooks_fallback_class_when_sdk_missing(monkeypatch):
-    mod = _reload_with_loader_failure("quickbooks_connector", monkeypatch)
-    instance = mod.QuickBooksConnector(config={"a": 1})
-    assert getattr(instance, "config", {}) == {"a": 1}
+def _load_connector(module_path: str):
+    spec = importlib.util.spec_from_file_location("connector", module_path)
+    if spec is None or spec.loader is None:
+        raise ModuleNotFoundError(f"Cannot load {module_path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
-def test_xero_fallback_class_when_sdk_missing(monkeypatch):
-    mod = _reload_with_loader_failure("xero_connector", monkeypatch)
-    instance = mod.XeroConnector(config={"b": 2})
-    assert getattr(instance, "config", {}) == {"b": 2}
+def test_quickbooks_connector_loads():
+    mod = _load_connector(str(Path("connectors/quickbooks_connector/connector.py")))
+    instance = mod.QuickBooksConnector(config={"client_id": "test", "client_secret": "test"})
+    assert instance.client_id == "test"
 
 
-def test_fallback_exports_are_available(monkeypatch):
-    qb = _reload_with_loader_failure("quickbooks_connector", monkeypatch)
-    xr = _reload_with_loader_failure("xero_connector", monkeypatch)
-
-    assert "QuickBooksConnector" in getattr(qb, "__all__", [])
-    assert "XeroConnector" in getattr(xr, "__all__", [])
+def test_xero_connector_loads():
+    mod = _load_connector(str(Path("connectors/xero_connector/connector.py")))
+    instance = mod.XeroConnector(config={"client_id": "test", "client_secret": "test"})
+    assert instance.client_id == "test"
 
 
-def test_fallback_default_config_is_empty_dict(monkeypatch):
-    qb = _reload_with_loader_failure("quickbooks_connector", monkeypatch)
-    xr = _reload_with_loader_failure("xero_connector", monkeypatch)
+def test_sap_connector_loads():
+    mod = _load_connector(str(Path("connectors/sap_connector/connector.py")))
+    assert hasattr(mod, "SAPErpConnector")
+    assert hasattr(mod, "SAPConnectionConfig")
 
-    assert qb.QuickBooksConnector().config == {}
-    assert xr.XeroConnector().config == {}
+
+def test_connector_has_expected_attributes():
+    mod = _load_connector(str(Path("connectors/quickbooks_connector/connector.py")))
+    instance = mod.QuickBooksConnector(config={"client_id": "x", "client_secret": "y"})
+    assert hasattr(instance, "is_connected")
+    assert hasattr(instance, "last_sync")
+    assert hasattr(instance, "base_url")

@@ -2,11 +2,16 @@
 Finovate Audit Nexus AI - Xero Connector
 موصل نظام Xero Accounting السحابي
 """
-import requests
-from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta
-import json
+import logging
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+import requests
+
+from connectors.base_connector import BaseERPConnector
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -18,7 +23,7 @@ class XeroConnectionConfig:
     refresh_token: str = ''
     tenant_id: str = ''
     environment: str = 'production'
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """تحويل الإعدادات إلى قاموس"""
         return {
@@ -31,7 +36,7 @@ class XeroConnectionConfig:
         }
 
 
-class XeroConnector:
+class XeroConnector(BaseERPConnector):
     """
     موصل احترافي لنظام Xero Accounting
     يستخدم Xero API الرسمي v2
@@ -40,7 +45,7 @@ class XeroConnector:
     def __init__(self, config: Dict[str, Any]):
         """
         تهيئة موصل Xero
-        
+
         Args:
             config: إعدادات الاتصال
                 - client_id: معرف العميل
@@ -50,17 +55,16 @@ class XeroConnector:
                 - tenant_id: معرف المستأجر (Organization ID)
                 - environment: sandbox أو production
         """
+        super().__init__()
         self.client_id = config.get('client_id', '')
         self.client_secret = config.get('client_secret', '')
         self.access_token = config.get('access_token', '')
         self.refresh_token = config.get('refresh_token', '')
         self.tenant_id = config.get('tenant_id', '')
         self.environment = config.get('environment', 'production')
-        
-        self.connected = False
-        self.last_sync = None
+
         self.token_expiry = None
-        
+
         # تحديد البيئة
         if self.environment == 'sandbox':
             self.base_url = 'https://api-sandbox.xero.com/api.xro/2.0'
@@ -68,7 +72,7 @@ class XeroConnector:
         else:
             self.base_url = 'https://api.xero.com/api.xro/2.0'
             self.auth_url = 'https://identity.xero.com/connect/token'
-    
+
     def _get_headers(self) -> Dict:
         """الحصول على رؤساء الطلب"""
         return {
@@ -76,7 +80,7 @@ class XeroConnector:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-    
+
     def _refresh_token(self):
         """تحديث رمز الوصول"""
         try:
@@ -86,41 +90,41 @@ class XeroConnector:
                 'client_id': self.client_id,
                 'client_secret': self.client_secret
             }
-            
+
             response = requests.post(self.auth_url, data=data, timeout=30)
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             self.access_token = result['access_token']
             self.refresh_token = result.get('refresh_token', self.refresh_token)
             expires_in = result.get('expires_in', 1800)  # Xero tokens expire in 30 mins
             self.token_expiry = datetime.now() + timedelta(seconds=expires_in)
-            self.connected = True
-            
+            self._connected = True
+
             return True
-            
+
         except Exception as e:
-            print(f"خطأ في تحديث الرمز: {str(e)}")
-            self.connected = False
+            logger.error("خطأ في تحديث الرمز: %s", e)
+            self._connected = False
             raise
-    
+
     def _request(self, method: str, endpoint: str, params: Optional[Dict] = None, data: Optional[Dict] = None) -> Dict:
         """
         تنفيذ طلب API
-        
+
         Args:
             method: نوع الطلب
             endpoint: نقطة النهاية
             params: معاملات الاستعلام
             data: بيانات الجسم
-            
+
         Returns:
             Dict: النتيجة
         """
         url = f"{self.base_url}/{endpoint}"
         headers = self._get_headers()
-        
+
         try:
             response = requests.request(
                 method,
@@ -130,10 +134,10 @@ class XeroConnector:
                 json=data,
                 timeout=30
             )
-            
+
             response.raise_for_status()
             return response.json()
-            
+
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 401:
                 # رمز الوصول منتهي، محاولة التجديد
@@ -151,11 +155,11 @@ class XeroConnector:
                 return response.json()
             raise
         except Exception as e:
-            print(f"خطأ في الطلب: {str(e)}")
+            logger.error("خطأ في الطلب: %s", e)
             raise
-    
+
     # ==================== جلب القيود المحاسبية ====================
-    
+
     def get_journal_entries(
         self,
         date_from: Optional[str] = None,
@@ -164,29 +168,29 @@ class XeroConnector:
     ) -> List[Dict]:
         """
         جلب قيود اليومية
-        
+
         Args:
             date_from: تاريخ البدء YYYY-MM-DD
             date_to: تاريخ الانتهاء YYYY-MM-DD
             page: رقم الصفحة
-            
+
         Returns:
             List[Dict]: قائمة القيود
         """
         params = {'page': page}
-        
+
         if date_from or date_to:
             where_clauses = []
             if date_from:
                 where_clauses.append(f'Date >= DateTime("{date_from}T00:00:00")')
             if date_to:
                 where_clauses.append(f'Date <= DateTime("{date_to}T23:59:59")')
-            
+
             params['where'] = ' && '.join(where_clauses)
-        
+
         try:
             result = self._request('GET', 'Journals', params)
-            
+
             entries = []
             for entry in result.get('Journals', []):
                 lines = []
@@ -200,7 +204,7 @@ class XeroConnector:
                         'credit': line.get('CreditAmount', 0),
                         'line_amount': line.get('LineAmount', 0)
                     })
-                
+
                 entries.append({
                     'id': entry.get('JournalID'),
                     'journal_number': entry.get('JournalNumber'),
@@ -210,15 +214,15 @@ class XeroConnector:
                     'source_id': entry.get('SourceID'),
                     'lines': lines
                 })
-            
+
             return entries
-            
+
         except Exception as e:
-            print(f"خطأ في جلب القيود: {str(e)}")
+            logger.error("خطأ في جلب القيود: %s", e)
             return []
-    
+
     # ==================== جلب ميزان المراجعة ====================
-    
+
     def get_trial_balance(
         self,
         as_of_date: Optional[str] = None,
@@ -226,11 +230,11 @@ class XeroConnector:
     ) -> List[Dict]:
         """
         جلب ميزان المراجعة
-        
+
         Args:
             as_of_date: التاريخ YYYY-MM-DD
             standard_only: حسابات قياسية فقط
-            
+
         Returns:
             List[Dict]: ميزان المراجعة
         """
@@ -239,13 +243,13 @@ class XeroConnector:
             params['date'] = as_of_date
         if standard_only:
             params['standardOnly'] = 'true'
-        
+
         try:
             result = self._request('GET', 'Reports/TrialBalance', params)
-            
+
             trial_balance = []
             rows = result.get('Reports', [{}])[0].get('Rows', [])
-            
+
             for row in rows:
                 if row.get('RowType') == 'Section':
                     for section_row in row.get('Rows', []):
@@ -259,15 +263,15 @@ class XeroConnector:
                                     'month_debit': float(cells[3].get('Value', 0) or 0),
                                     'month_credit': float(cells[4].get('Value', 0) or 0) if len(cells) > 4 else 0
                                 })
-            
+
             return trial_balance
-            
+
         except Exception as e:
-            print(f"خطأ في جلب ميزان المراجعة: {str(e)}")
+            logger.error("خطأ في جلب ميزان المراجعة: %s", e)
             return []
-    
+
     # ==================== جلب القوائم المالية ====================
-    
+
     def get_financial_statements(
         self,
         date_from: str,
@@ -276,7 +280,7 @@ class XeroConnector:
     ) -> Dict:
         """
         جلب القوائم المالية
-        
+
         Returns:
             Dict: القوائم المالية
         """
@@ -285,7 +289,7 @@ class XeroConnector:
             'balance_sheet': [],
             'cash_flow': []
         }
-        
+
         try:
             # قائمة الدخل (Profit & Loss)
             pl_params = {
@@ -297,7 +301,7 @@ class XeroConnector:
             reports = pl_result.get('Reports', [])
             if reports:
                 result['income_statement'] = reports[0]
-            
+
             # الميزانية العمومية (Balance Sheet)
             bs_params = {
                 'date': date_to,
@@ -307,7 +311,7 @@ class XeroConnector:
             reports = bs_result.get('Reports', [])
             if reports:
                 result['balance_sheet'] = reports[0]
-            
+
             # التدفقات النقدية (Cash Flow)
             cf_params = {
                 'fromDate': date_from,
@@ -318,15 +322,15 @@ class XeroConnector:
             reports = cf_result.get('Reports', [])
             if reports:
                 result['cash_flow'] = reports[0]
-            
+
             return result
-            
+
         except Exception as e:
-            print(f"خطأ في جلب القوائم المالية: {str(e)}")
+            logger.error("خطأ في جلب القوائم المالية: %s", e)
             return result
-    
+
     # ==================== جلب الفواتير ====================
-    
+
     def get_invoices(
         self,
         invoice_type: str = 'ACCREC',  # ACCREC = Sales, ACCPAY = Purchase
@@ -337,18 +341,18 @@ class XeroConnector:
     ) -> List[Dict]:
         """
         جلب الفواتير
-        
+
         Args:
             invoice_type: نوع الفاتورة (ACCREC, ACCPAY)
             status: الحالة (DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED)
             date_from: تاريخ البدء
             date_to: تاريخ الانتهاء
-            
+
         Returns:
             List[Dict]: قائمة الفواتير
         """
         params = {'page': page}
-        
+
         where_clauses = []
         if invoice_type:
             where_clauses.append(f'Type == "{invoice_type}"')
@@ -358,13 +362,13 @@ class XeroConnector:
             where_clauses.append(f'Date >= DateTime("{date_from}T00:00:00")')
         if date_to:
             where_clauses.append(f'Date <= DateTime("{date_to}T23:59:59")')
-        
+
         if where_clauses:
             params['where'] = ' && '.join(where_clauses)
-        
+
         try:
             result = self._request('GET', 'Invoices', params)
-            
+
             invoices = []
             for inv in result.get('Invoices', []):
                 invoices.append({
@@ -382,15 +386,15 @@ class XeroConnector:
                     'currency': inv.get('CurrencyCode', 'USD'),
                     'type': inv.get('Type')
                 })
-            
+
             return invoices
-            
+
         except Exception as e:
-            print(f"خطأ في جلب الفواتير: {str(e)}")
+            logger.error("خطأ في جلب الفواتير: %s", e)
             return []
-    
+
     # ==================== جلب جهات الاتصال (عملاء/موردين) ====================
-    
+
     def get_contacts(
         self,
         contact_type: Optional[str] = None,  # CUSTOMER, SUPPLIER
@@ -399,27 +403,27 @@ class XeroConnector:
     ) -> List[Dict]:
         """
         جلب جهات الاتصال
-        
+
         Args:
             contact_type: النوع
             status: الحالة
             page: رقم الصفحة
-            
+
         Returns:
             List[Dict]: قائمة جهات الاتصال
         """
         params = {'page': page}
-        
+
         where_clauses = []
         if status:
             where_clauses.append(f'Status == "{status}"')
-        
+
         if where_clauses:
             params['where'] = ' && '.join(where_clauses)
-        
+
         try:
             result = self._request('GET', 'Contacts', params)
-            
+
             contacts = []
             for contact in result.get('Contacts', []):
                 contacts.append({
@@ -440,15 +444,15 @@ class XeroConnector:
                     },
                     'status': contact.get('Status')
                 })
-            
+
             return contacts
-            
+
         except Exception as e:
-            print(f"خطأ في جلب جهات الاتصال: {str(e)}")
+            logger.error("خطأ في جلب جهات الاتصال: %s", e)
             return []
-    
+
     # ==================== جلب المنتجات والمخزون ====================
-    
+
     def get_items(
         self,
         status: str = 'ACTIVE',
@@ -456,18 +460,18 @@ class XeroConnector:
     ) -> List[Dict]:
         """
         جلب المنتجات والمخزون
-        
+
         Returns:
             List[Dict]: قائمة المنتجات
         """
         params = {'page': page}
-        
+
         if status:
             params['where'] = f'Status == "{status}"'
-        
+
         try:
             result = self._request('GET', 'Items', params)
-            
+
             items = []
             for item in result.get('Items', []):
                 items.append({
@@ -488,15 +492,15 @@ class XeroConnector:
                     'purchase_account_id': item.get('PurchaseAccountID'),
                     'status': item.get('Status')
                 })
-            
+
             return items
-            
+
         except Exception as e:
-            print(f"خطأ في جلب المنتجات: {str(e)}")
+            logger.error("خطأ في جلب المنتجات: %s", e)
             return []
-    
+
     # ==================== جلب الحسابات ====================
-    
+
     def get_accounts(
         self,
         account_type: Optional[str] = None,
@@ -504,28 +508,28 @@ class XeroConnector:
     ) -> List[Dict]:
         """
         جلب دليل الحسابات
-        
+
         Args:
             account_type: نوع الحساب
             status: الحالة
-            
+
         Returns:
             List[Dict]: قائمة الحسابات
         """
         params = {}
-        
+
         where_clauses = []
         if status:
             where_clauses.append(f'Status == "{status}"')
         if account_type:
             where_clauses.append(f'Type == "{account_type}"')
-        
+
         if where_clauses:
             params['where'] = ' && '.join(where_clauses)
-        
+
         try:
             result = self._request('GET', 'Accounts', params)
-            
+
             accounts = []
             for acc in result.get('Accounts', []):
                 accounts.append({
@@ -543,25 +547,25 @@ class XeroConnector:
                     'status': acc.get('Status'),
                     'class': acc.get('Class')
                 })
-            
+
             return accounts
-            
+
         except Exception as e:
-            print(f"خطأ في جلب الحسابات: {str(e)}")
+            logger.error("خطأ في جلب الحسابات: %s", e)
             return []
-    
+
     # ==================== معلومات المنظمة ====================
-    
+
     def get_organization_info(self) -> Dict:
         """
         جلب معلومات المنظمة
-        
+
         Returns:
             Dict: معلومات المنظمة
         """
         try:
             result = self._request('GET', 'Organisation')
-            
+
             orgs = result.get('Organisations', [])
             if orgs:
                 org = orgs[0]
@@ -579,61 +583,61 @@ class XeroConnector:
                     'financial_year_end_day': org.get('FinancialYearEndDay'),
                     'financial_year_end_month': org.get('FinancialYearEndMonth'),
                     'sales_tax_basis': org.get('SalesTaxBasis'),
-                    'connected': self.connected,
+                    'connected': self._connected,
                     'last_sync': self.last_sync.isoformat() if self.last_sync else None
                 }
-            
+
             return {'error': 'لم يتم العثور على منظمة'}
-            
+
         except Exception as e:
-            print(f"خطأ في جلب معلومات المنظمة: {str(e)}")
+            logger.error("خطأ في جلب معلومات المنظمة: %s", e)
             return {'error': str(e), 'connected': False}
-    
+
     # ==================== المزامنة ====================
-    
+
     def sync_all(self) -> Dict[str, int]:
         """
         مزامنة جميع البيانات
-        
+
         Returns:
             Dict: عدد العناصر المزامنة
         """
         synced = {}
-        
+
         try:
             # جلب الفواتير
             invoices = self.get_invoices(page=1)
             synced['invoices_count'] = len(invoices) if invoices else 0
-            
+
             # جلب القيود
             entries = self.get_journal_entries(page=1)
             synced['journal_entries_count'] = len(entries) if entries else 0
-            
+
             # جلب جهات الاتصال
             contacts = self.get_contacts(page=1)
             synced['contacts_count'] = len(contacts) if contacts else 0
-            
+
             # جلب المنتجات
             items = self.get_items(page=1)
             synced['items_count'] = len(items) if items else 0
-            
+
             # جلب الحسابات
             accounts = self.get_accounts()
             synced['accounts_count'] = len(accounts) if accounts else 0
-            
+
             self.last_sync = datetime.now()
-            
+
         except Exception as e:
-            print(f"خطأ في المزامنة: {str(e)}")
-        
+            logger.error("خطأ في المزامنة: %s", e)
+
         return synced
-    
+
     # ==================== اختبار الاتصال ====================
-    
+
     def test_connection(self) -> Dict:
         """
         اختبار الاتصال
-        
+
         Returns:
             Dict: نتيجة الاختبار
         """
@@ -642,46 +646,57 @@ class XeroConnector:
             'message': '',
             'details': {}
         }
-        
+
         try:
             info = self.get_organization_info()
-            
+
             if 'error' not in info:
                 result['success'] = True
                 result['message'] = 'اتصال ناجح'
                 result['details'] = info
             else:
                 result['message'] = info.get('error', 'خطأ غير معروف')
-            
+
             return result
-            
+
         except Exception as e:
             result['message'] = str(e)
             return result
 
 
-# دالة مساعدة لإنشاء الموصل
+    # ==================== إدارة الاتصال ====================
 
     def connect(self) -> bool:
-        """إنشاء الاتصال"""
-        self.connected = True
-        return True
-    
-    def disconnect(self):
+        """إنشاء الاتصال بـ Xero"""
+        try:
+            info = self.get_organization_info()
+            if 'error' not in info:
+                self._connected = True
+                return True
+            logger.warning("Xero connection failed: %s", info.get('error'))
+            self._connected = False
+            return False
+        except Exception as e:
+            logger.error("Xero connection failed: %s", e)
+            self._connected = False
+            return False
+
+    def disconnect(self) -> None:
         """قطع الاتصال"""
-        self.connected = False
-    
-    def is_connected(self) -> bool:
-        """التحقق من حالة الاتصال"""
-        return self.connected
+        self.access_token = None
+        self.refresh_token = None
+        self._connected = False
+
+
+# دالة مساعدة لإنشاء الموصل
 
 def create_xero_connector(config: Dict[str, Any]) -> XeroConnector:
     """
     إنشاء موصل Xero
-    
+
     Args:
         config: إعدادات الاتصال
-        
+
     Returns:
         XeroConnector: موصل جاهز
     """

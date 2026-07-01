@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block content %}
+<div style="text-align:center;margin:20px 0;">
+<span class="badge badge-danger">{{ severity_label }}: {{ severity }}</span>
+</div>
+<p>{{ alert_text }}</p>
+<div style="margin:20px 0;background:#ffebee;padding:20px;border-radius:8px;border-left:4px solid #c62828;">
+<p><strong>{{ description_label }}:</strong> {{ description }}</p>
+{% if evidence %}<p><strong>{{ evidence_label }}:</strong></p><ul>{% for item in evidence %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+</div>
+<div style="text-align:center;margin:20px 0;">
+<a href="{{ dashboard_url }}" class="btn">{{ btn_text }}</a>
+</div>
+{% endblock %}

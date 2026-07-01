@@ -5,25 +5,26 @@ Enterprise-grade security layer with encryption, authentication,
 authorization, and audit logging.
 """
 
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import base64
+import hashlib
+import os
 import secrets
-from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
+
 from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.backends import default_backend
-import base64
-import os
 from loguru import logger
+
+from backend.security import hash_password, verify_password
 
 
 class SecurityManager:
     """
     Enterprise Security Manager
-    
+
     Responsibilities:
     - AES-256 Encryption/Decryption
     - Password Hashing
@@ -35,18 +36,20 @@ class SecurityManager:
 
     def __init__(self, encryption_key: Optional[str] = None):
         self.security_id = "security_manager_001"
-        
+
         # Generate or use provided encryption key
         if encryption_key:
-            # If an encryption_key (passphrase) is provided, derive the Fernet key from it
-            # The salt for this KDF should be consistent for the application or stored securely.
-            # For now, we\'ll use a fixed salt for derivation, but in production, this needs careful management.
-            kdf_salt = os.getenv("KDF_SALT", "finovate_kdf_salt").encode()
+            kdf_salt_env = os.getenv("KDF_SALT")
+            if not kdf_salt_env:
+                kdf_salt_env = hashlib.sha256(encryption_key.encode()).hexdigest()[:32]
+                import logging
+                logging.getLogger(__name__).warning("KDF_SALT not set - derived from encryption_key hash. Set KDF_SALT env var for production.")
+            kdf_salt = kdf_salt_env.encode()
             kdf = PBKDF2HMAC(
                 algorithm=hashes.SHA256(),
-                length=32, # 32 bytes for a 256-bit key
+                length=32,
                 salt=kdf_salt,
-                iterations=480000, # Recommended iterations for PBKDF2
+                iterations=480000,
                 backend=default_backend()
             )
             derived_key = base64.urlsafe_b64encode(kdf.derive(encryption_key.encode()))
@@ -54,15 +57,15 @@ class SecurityManager:
         else:
             # If no passphrase, generate a new random Fernet key
             self.key = Fernet.generate_key()
-        
+
         self.cipher = Fernet(self.key)
-        
+
         # Active sessions
         self.sessions = {}
-        
+
         # Audit logs
         self.audit_logs = []
-        
+
         logger.info(f"Security Manager initialized: {self.security_id}")
 
 
@@ -87,17 +90,17 @@ class SecurityManager:
 
     def hash_password(self, password: str) -> str:
         """Hash password using bcrypt"""
-        return pwd_context.hash(password)
+        return hash_password(password)
 
     def verify_password(self, password: str, hashed_password: str) -> bool:
-        """Verify password against bcrypt hash"""
-        return pwd_context.verify(password, hashed_password)
+        """Verify password against hash"""
+        return verify_password(password, hashed_password)
 
     def generate_session_token(self, user_id: str, device_id: str) -> str:
         """Generate secure session token"""
         token = secrets.token_urlsafe(32)
         expiration = datetime.now() + timedelta(hours=8)
-        
+
         self.sessions[token] = {
             "user_id": user_id,
             "device_id": device_id,
@@ -105,26 +108,26 @@ class SecurityManager:
             "expires_at": expiration,
             "is_active": True
         }
-        
+
         self._log_audit_event("session_created", user_id, {"token": token[:8] + "...", "device_id": device_id})
         logger.info(f"Session created for user {user_id}")
-        
+
         return token
 
     def validate_session_token(self, token: str) -> Dict[str, Any]:
         """Validate session token"""
         if token not in self.sessions:
             return {"valid": False, "error": "Token not found"}
-        
+
         session = self.sessions[token]
-        
+
         if not session["is_active"]:
             return {"valid": False, "error": "Session inactive"}
-        
+
         if datetime.now() > session["expires_at"]:
             session["is_active"] = False
             return {"valid": False, "error": "Session expired"}
-        
+
         return {
             "valid": True,
             "user_id": session["user_id"],
@@ -152,11 +155,11 @@ class SecurityManager:
             "user_agent": "N/A"
         }
         self.audit_logs.append(log_entry)
-        
+
         # Keep last 1000 events in memory
         if len(self.audit_logs) > 1000:
             self.audit_logs = self.audit_logs[-1000:]
-        
+
         logger.info(f"Audit event: {event_type} by {user_id}")
 
     def get_audit_logs(
@@ -167,13 +170,13 @@ class SecurityManager:
     ) -> list:
         """Retrieve audit logs with filters"""
         filtered = self.audit_logs
-        
+
         if user_id:
             filtered = [log for log in filtered if log["user_id"] == user_id]
-        
+
         if event_type:
             filtered = [log for log in filtered if log["event_type"] == event_type]
-        
+
         return filtered[-limit:]
 
     def generate_api_key(self, name: str) -> str:
@@ -181,7 +184,7 @@ class SecurityManager:
         prefix = "fnv_"
         key = secrets.token_urlsafe(24)
         api_key = f"{prefix}{key}"
-        
+
         self._log_audit_event("api_key_generated", "system", {"key_name": name})
         return api_key
 

@@ -5,16 +5,17 @@ Agent responsible for managing connections to various ERP systems
 and handling data synchronization.
 """
 
-from typing import Dict, List, Any, Optional
-from datetime import datetime
 import asyncio
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 
 class ERPConnectorAgent:
     """
     ERP Connector Agent - Manages ERP System Connections
-    
+
     Responsibilities:
     - Connect to multiple ERP systems (SAP, Oracle, Dynamics, etc.)
     - Handle authentication and authorization
@@ -31,7 +32,7 @@ class ERPConnectorAgent:
         self.status = "initialized"
         self.connections = {}
         self.sync_status = {}
-        
+
         # Supported ERP systems
         self.supported_erp_systems = [
             "SAP",
@@ -42,7 +43,7 @@ class ERPConnectorAgent:
             "QuickBooks",
             "Xero"
         ]
-        
+
         logger.info(f"{self.name} initialized")
 
     async def connect_to_erp(
@@ -53,30 +54,30 @@ class ERPConnectorAgent:
     ) -> bool:
         """
         Establish connection to an ERP system
-        
+
         Args:
             erp_type: Type of ERP system
             credentials: Authentication credentials
             config: Additional configuration
-            
+
         Returns:
             True if connection successful
         """
         logger.info(f"Connecting to {erp_type}...")
-        
+
         if erp_type not in self.supported_erp_systems:
             logger.error(f"Unsupported ERP system: {erp_type}")
             return False
-        
+
         try:
             # Validate credentials
             if not self._validate_credentials(credentials):
                 logger.error("Invalid credentials")
                 return False
-            
+
             # Create connection based on ERP type
             connection = await self._create_connection(erp_type, credentials, config)
-            
+
             if connection:
                 connection_id = f"{erp_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
                 self.connections[connection_id] = {
@@ -85,13 +86,13 @@ class ERPConnectorAgent:
                     "status": "connected",
                     "created_at": datetime.now()
                 }
-                
+
                 logger.info(f"Successfully connected to {erp_type}")
                 return True
             else:
                 logger.error(f"Failed to create connection to {erp_type}")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Connection error: {str(e)}")
             return False
@@ -104,27 +105,27 @@ class ERPConnectorAgent:
     ) -> Dict[str, Any]:
         """
         Synchronize data from ERP system
-        
+
         Args:
             connection_id: ID of the ERP connection
             data_types: Types of data to sync (journal_entries, ledger, etc.)
             incremental: Use incremental sync
-            
+
         Returns:
             Sync results
         """
         logger.info(f"Starting data sync for connection {connection_id}")
-        
+
         if connection_id not in self.connections:
             logger.error(f"Connection {connection_id} not found")
             return {"success": False, "error": "Connection not found"}
-        
+
         connection_info = self.connections[connection_id]
-        
+
         if connection_info["status"] != "connected":
             logger.error(f"Connection {connection_id} is not active")
             return {"success": False, "error": "Connection not active"}
-        
+
         try:
             sync_results = {
                 "connection_id": connection_id,
@@ -133,7 +134,7 @@ class ERPConnectorAgent:
                 "data_synced": {},
                 "errors": []
             }
-            
+
             for data_type in data_types:
                 try:
                     # Fetch data based on type
@@ -142,15 +143,15 @@ class ERPConnectorAgent:
                         data_type,
                         incremental
                     )
-                    
+
                     sync_results["data_synced"][data_type] = {
                         "records_count": len(data) if isinstance(data, list) else 1,
                         "status": "success",
                         "timestamp": datetime.now()
                     }
-                    
+
                     logger.info(f"Synced {data_type}: {len(data) if isinstance(data, list) else 1} records")
-                    
+
                 except Exception as e:
                     error_msg = f"Error syncing {data_type}: {str(e)}"
                     logger.error(error_msg)
@@ -158,14 +159,14 @@ class ERPConnectorAgent:
                         "data_type": data_type,
                         "error": str(e)
                     })
-            
+
             sync_results["sync_completed"] = datetime.now()
             sync_results["success"] = len(sync_results["errors"]) == 0
-            
+
             self.sync_status[connection_id] = sync_results
-            
+
             return sync_results
-            
+
         except Exception as e:
             logger.error(f"Sync error: {str(e)}")
             return {"success": False, "error": str(e)}
@@ -173,30 +174,30 @@ class ERPConnectorAgent:
     async def disconnect(self, connection_id: str) -> bool:
         """
         Disconnect from ERP system
-        
+
         Args:
             connection_id: ID of the connection to close
-            
+
         Returns:
             True if disconnection successful
         """
         if connection_id not in self.connections:
             logger.error(f"Connection {connection_id} not found")
             return False
-        
+
         try:
             connection_info = self.connections[connection_id]
-            
+
             # Close connection
             if hasattr(connection_info["connection"], "close"):
                 connection_info["connection"].close()
-            
+
             connection_info["status"] = "disconnected"
             del self.connections[connection_id]
-            
+
             logger.info(f"Disconnected from connection {connection_id}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Disconnect error: {str(e)}")
             return False
@@ -251,7 +252,7 @@ class ERPConnectorAgent:
         """Fetch data from ERP system"""
         # Mock data fetching - would be implemented with actual ERP API calls
         logger.info(f"Fetching {data_type} (incremental={incremental})")
-        
+
         # Return mock data structure
         return []
 
@@ -259,21 +260,18 @@ class ERPConnectorAgent:
         """Test ERP connection health"""
         if connection_id not in self.connections:
             return {"success": False, "error": "Connection not found"}
-        
+
         try:
-            # Perform health check
-            connection = self.connections[connection_id]["connection"]
-            
             # Mock health check
             is_healthy = True
-            
+
             return {
                 "success": is_healthy,
                 "connection_id": connection_id,
                 "response_time_ms": 50,
                 "timestamp": datetime.now()
             }
-            
+
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -282,21 +280,21 @@ class ERPConnectorAgent:
 async def main():
     """Example usage of ERP Connector Agent"""
     agent = ERPConnectorAgent()
-    
+
     # Connect to ERP
     credentials = {
         "username": "admin",
         "password": "password",
         "endpoint": "https://erp.example.com"
     }
-    
+
     success = await agent.connect_to_erp("SAP", credentials)
     print(f"Connection successful: {success}")
-    
+
     # List connections
     connections = agent.list_connections()
     print(f"Active connections: {connections}")
-    
+
     # Sync data
     if connections:
         sync_result = await agent.sync_data(

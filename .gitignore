@@ -1,4 +1,3 @@
-```
 # Python
 __pycache__/
 *.py[cod]
@@ -37,6 +36,7 @@ MANIFEST
 # Environment
 .env
 .env.local
+!.env.example
 .env.*
 .venv/
 venv/
@@ -53,13 +53,42 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Database
-*.db
+# Database (ignore local dev db, not schema)
+finovate_audit.db
+test_finovate_audit.db
 *.db-journal
 
 # Logs
 *.log
+logs/
+server_err.log
+server.log
 
-# Build scripts
-scripts/build.sh
-```
+# Generated reports/exports
+reports/
+exports/
+
+# Uploaded files
+uploads/
+
+# Archives and bundles
+_archive/
+*.zip
+
+# Frontend build
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/
+# frontend/package-lock.json  # keep lockfile for reproducible npm ci builds
+
+# PyInstaller build output
+*.spec
+
+# Vector store
+vector_store/
+
+# Temporary
+*.tmp
+
+# Backups
+backups/

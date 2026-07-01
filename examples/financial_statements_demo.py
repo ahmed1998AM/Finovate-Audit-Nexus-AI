@@ -10,7 +10,7 @@ import os
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.financial_statements_agent import FinancialStatementsAgent
+from agents.fs_agent.agent import FinancialStatementsAuditAgent
 from backend.services.reporting_service import ReportingService
 from datetime import datetime
 
@@ -22,7 +22,7 @@ def main():
     print()
     
     # Initialize agents
-    fs_agent = FinancialStatementsAgent()
+    fs_agent = FinancialStatementsAuditAgent()
     reporting = ReportingService()
     
     # Sample financial data
@@ -186,35 +186,34 @@ def main():
     print("=" * 70)
     print()
     
-    analysis = fs_agent.analyze_financial_health(sample_data)
+    analysis = fs_agent.execute(sample_data)
     
-    print("🎯 Financial Health Score:")
-    score = analysis.get('overall_score', 85)
+    print("🎯 Financial Health Assessment:")
+    overall = analysis.get('overall_assessment', {})
+    score = int((1 - overall.get('manipulation_risk', 0.15)) * 100)
     rating = "Excellent" if score >= 90 else "Good" if score >= 75 else "Fair" if score >= 60 else "Poor"
     print(f"   Score: {score}/100 ({rating})")
     print()
     
     print("📈 Key Ratios:")
-    ratios = analysis.get('ratios', {})
+    ratios = analysis.get('comprehensive_ratios', {})
     print(f"   Current Ratio: {ratios.get('current_ratio', 2.2):.2f}")
-    print(f"   Debt-to-Equity: {ratios.get('debt_to_equity', 0.85):.2f}")
-    print(f"   Return on Equity: {ratios.get('roe', 8.05):.2f}%")
-    print(f"   Gross Margin: {ratios.get('gross_margin', 40.0):.1f}%")
-    print(f"   Net Profit Margin: {ratios.get('net_margin', 4.84):.2f}%")
+    print(f"   Debt-to-Equity: {ratios.get('debt_to_assets', 0.85):.2f}")
+    print(f"   Return on Equity: {ratios.get('return_on_equity', 8.05):.2f}%")
+    print(f"   Gross Margin: {ratios.get('gross_profit_margin', 40.0):.1f}%")
+    print(f"   Net Profit Margin: {ratios.get('net_profit_margin', 4.84):.2f}%")
     print()
     
-    print("✅ Strengths:")
-    for strength in analysis.get('strengths', ["Strong liquidity position", "Healthy profit margins"]):
-        print(f"   • {strength}")
-    print()
-    
-    print("⚠️ Areas for Improvement:")
-    for area in analysis.get('weaknesses', ["High debt-to-equity ratio", "Low asset turnover"]):
-        print(f"   • {area}")
+    errors = overall.get('total_errors', 0)
+    warnings_count = overall.get('total_warnings', 0)
+    print("✅ Assessment:")
+    print(f"   • {'Reliable' if overall.get('is_reliable', True) else 'Needs Review'}")
+    print(f"   • Errors found: {errors}")
+    print(f"   • Warnings: {warnings_count}")
     print()
     
     print("💡 Recommendations:")
-    for rec in analysis.get('recommendations', []):
+    for rec in analysis.get('all_recommendations', ["Continue regular monitoring"]):
         print(f"   • {rec}")
     print()
     

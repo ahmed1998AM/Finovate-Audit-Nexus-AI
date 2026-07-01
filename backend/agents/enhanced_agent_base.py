@@ -4,12 +4,13 @@ Base class for intelligent agents with LLM integration
 Enterprise AI Financial Audit & Intelligence Platform
 """
 
+import uuid
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
-import uuid
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 from backend.ai_engine.engine_v2 import get_ai_engine_v2
@@ -55,7 +56,7 @@ class AgentResult:
 class EnhancedAgent(ABC):
     """
     Enhanced base class for all AI agents with LLM integration
-    
+
     Features:
     - LLM-powered analysis and decision making
     - Tool management and execution

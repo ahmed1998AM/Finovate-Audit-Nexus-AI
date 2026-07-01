@@ -4,12 +4,13 @@ Comprehensive Agent Tests
 Extended test coverage for all 22 AI agents.
 """
 
+import os
 import pytest
 import sys
 from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime, timedelta
 
-sys.path.insert(0, '/workspace')
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
 
 class TestAllAgentsInitialization:
@@ -149,7 +150,7 @@ class TestAllAgentsInitialization:
 
 
 class TestAgentMethods:
-    """Test specific methods of agents."""
+    """Test specific methods of agents with real execution."""
     
     def test_chief_agent_orchestrate(self):
         """Test Chief Agent orchestration method."""
@@ -160,28 +161,53 @@ class TestAgentMethods:
         assert hasattr(agent, 'orchestrate_audit') or hasattr(agent, 'execute')
         
     def test_fraud_agent_detect(self):
-        """Test Fraud Agent detection method."""
+        """Test Fraud Agent detection method with real data."""
         from agents.fraud_agent.agent import FraudDetectionAgent
+        import pandas as pd
         agent = FraudDetectionAgent()
         
-        # Verify method exists
-        assert hasattr(agent, 'detect_fraud') or hasattr(agent, 'analyze')
+        # Test with real transaction data
+        sample_transactions = pd.DataFrame([
+            {'id': 1, 'amount': 5000, 'vendor': 'Vendor A', 'date': '2024-01-15'},
+            {'id': 2, 'amount': 4999, 'vendor': 'Vendor A', 'date': '2024-01-16'},
+            {'id': 3, 'amount': 150000, 'vendor': 'Vendor B', 'date': '2024-01-17'},
+        ])
+        
+        result = agent.detect_fraud(sample_transactions)
+        assert result is not None
+        assert isinstance(result, dict)
         
     def test_risk_agent_score(self):
-        """Test Risk Agent scoring method."""
+        """Test Risk Agent scoring method with real data."""
         from agents.risk_agent.agent import RiskScoringAgent
+        import pandas as pd
         agent = RiskScoringAgent()
         
-        # Verify method exists
-        assert hasattr(agent, 'calculate_risk_score') or hasattr(agent, 'assess')
+        # Test with real financial data
+        sample_data = pd.DataFrame([
+            {'account': 'Cash', 'amount': 100000, 'risk_factor': 0.1},
+            {'account': 'Receivables', 'amount': 50000, 'risk_factor': 0.3},
+        ])
+        
+        result = agent.assess_risks(sample_data)
+        assert result is not None
+        assert isinstance(result, dict)
         
     def test_compliance_agent_verify(self):
-        """Test Compliance Agent verification method."""
+        """Test Compliance Agent verification method with real data."""
         from agents.compliance_agent.agent import ComplianceStandardsAgent
+        import pandas as pd
         agent = ComplianceStandardsAgent()
         
-        # Verify method exists
-        assert hasattr(agent, 'verify_compliance') or hasattr(agent, 'check')
+        # Test with real compliance data
+        sample_data = pd.DataFrame([
+            {'regulation': 'GAAP', 'compliant': True, 'check_date': '2024-01-15'},
+            {'regulation': 'IFRS', 'compliant': True, 'check_date': '2024-01-15'},
+        ])
+        
+        result = agent.check_compliance(sample_data)
+        assert result is not None
+        assert isinstance(result, dict)
 
 
 class TestAgentIntegration:
@@ -283,7 +309,87 @@ class TestAgentConfiguration:
     def test_agent_customizable(self):
         """Test that agents can be customized."""
         from agents.risk_agent.agent import RiskScoringAgent
-        
+
         # Should be able to create with parameters
         agent = RiskScoringAgent()
         assert agent is not None
+
+
+class TestEnhancedAgents:
+    """Test enhanced (LLM-powered) agent base class and implementations."""
+
+    def test_agent_result_dataclass(self):
+        """Test AgentResult dataclass."""
+        from backend.agents.enhanced_agent_base import AgentResult
+
+        r = AgentResult(success=True, data={"key": "val"}, message="done")
+        assert r.success is True
+        assert r.data == {"key": "val"}
+        assert r.message == "done"
+        assert r.errors == []
+        assert r.confidence_score == 0.0
+
+    def test_agent_result_to_dict(self):
+        """Test AgentResult.to_dict()."""
+        from backend.agents.enhanced_agent_base import AgentResult
+
+        r = AgentResult(success=True, data=[1, 2, 3])
+        d = r.to_dict()
+        assert d["success"] is True
+        assert d["data"] == [1, 2, 3]
+        assert "timestamp" in d
+
+    def test_agent_status_enum(self):
+        """Test AgentStatus enum values."""
+        from backend.agents.enhanced_agent_base import AgentStatus
+
+        assert AgentStatus.IDLE.value == "idle"
+        assert AgentStatus.RUNNING.value == "running"
+        assert AgentStatus.COMPLETED.value == "completed"
+        assert AgentStatus.FAILED.value == "failed"
+        assert AgentStatus.PAUSED.value == "paused"
+
+    @patch("backend.agents.enhanced_agent_base.get_ai_engine_v2")
+    def test_enhanced_fraud_agent_init(self, mock_get_engine):
+        """Test EnhancedFraudDetectionAgent initialization."""
+        mock_get_engine.return_value = MagicMock()
+        from agents.fraud_agent.enhanced_agent import EnhancedFraudDetectionAgent
+
+        agent = EnhancedFraudDetectionAgent()
+        assert agent.name == "Enhanced Fraud Detection AI Agent"
+        assert agent.agent_type == "fraud_detection"
+        assert agent.status.value == "idle"
+
+    @patch("backend.agents.enhanced_agent_base.get_ai_engine_v2")
+    def test_enhanced_compliance_agent_init(self, mock_get_engine):
+        """Test EnhancedComplianceAgent initialization."""
+        mock_get_engine.return_value = MagicMock()
+        from agents.compliance_agent.enhanced_agent import EnhancedComplianceAgent
+
+        agent = EnhancedComplianceAgent()
+        assert agent.name == "Enhanced Compliance Standards AI Agent"
+        assert agent.agent_type == "compliance"
+        assert agent.status.value == "idle"
+
+    @patch("backend.agents.enhanced_agent_base.get_ai_engine_v2")
+    def test_enhanced_agent_registers_tools(self, mock_get_engine):
+        """Test enhanced agents register tools on init."""
+        mock_get_engine.return_value = MagicMock()
+        from agents.fraud_agent.enhanced_agent import EnhancedFraudDetectionAgent
+
+        agent = EnhancedFraudDetectionAgent()
+        tools = agent.get_available_tools()
+        assert "analyze_transactions" in tools
+        assert "detect_anomalies" in tools
+        assert "calculate_risk_score" in tools
+
+    @patch("backend.agents.enhanced_agent_base.get_ai_engine_v2")
+    def test_enhanced_agent_validate_input(self, mock_get_engine):
+        """Test EnhancedFraudDetectionAgent.validate_input()."""
+        mock_get_engine.return_value = MagicMock()
+        from agents.fraud_agent.enhanced_agent import EnhancedFraudDetectionAgent
+
+        agent = EnhancedFraudDetectionAgent()
+        assert agent.validate_input(financial_data={}) is True
+        assert agent.validate_input() is False
+        assert agent.validate_input(other=123) is False

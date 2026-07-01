@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.bank_agent.agent import BankAgent
+from agents.bank_agent.agent import BankAuditAgent
 from datetime import datetime
 
 
@@ -20,7 +20,7 @@ def run_bank_reconciliation_demo():
     print()
     
     # إنشاء وكيل البنك
-    bank_agent = BankAgent()
+    bank_agent = BankAuditAgent()
     
     # بيانات الدفتر العام (الشركة)
     company_records = [

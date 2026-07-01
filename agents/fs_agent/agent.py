@@ -14,10 +14,10 @@ Financial Statements Audit Agent
 
 import json
 import logging
-from datetime import datetime
-from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class FSAnalysisResult:
 class FinancialStatementsAuditAgent:
     """
     وكيل مراجعة القوائم المالية
-    
+
     المهام:
     - التحقق من توازن الميزانية
     - تحليل قائمة الدخل
@@ -68,13 +68,13 @@ class FinancialStatementsAuditAgent:
     - التحليل الرأسي والأفقي
     - كشف التلاعب في القوائم
     """
-    
+
     def __init__(self, llm_provider: Optional[str] = None):
         self.llm_provider = llm_provider or "default"
         self.name = "Financial_Statements_Audit_Agent"
         self.version = "1.0.0"
         self.supported_standards = ["IFRS", "IAS", "Egyptian_GAAP"]
-        
+
         # حدود الكشف عن التلاعب
         self.manipulation_thresholds = {
             "revenue_growth_anomaly": 0.50,  # نمو غير طبيعي > 50%
@@ -83,14 +83,14 @@ class FinancialStatementsAuditAgent:
             "inventory_turnover_anomaly": 0.40,
             "cash_flow_divergence": 0.25
         }
-        
+
     async def analyze_financial_statements(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Orchestrate the financial statements analysis process
-        
+
         Args:
             data: Financial statements data
-            
+
         Returns:
             Comprehensive analysis results
         """
@@ -101,7 +101,7 @@ class FinancialStatementsAuditAgent:
             "overall_status": "completed",
             "timestamp": datetime.now().isoformat()
         }
-        
+
         if not data:
             return results
 
@@ -139,33 +139,33 @@ class FinancialStatementsAuditAgent:
 
         return results
 
-    def analyze_income_statement(self, 
+    def analyze_income_statement(self,
                                   current_period: Dict[str, float],
                                   prior_period: Optional[Dict[str, float]] = None,
                                   currency: str = "EGP") -> FSAnalysisResult:
         """
         تحليل قائمة الدخل
-        
+
         Args:
             current_period: بيانات الفترة الحالية
             prior_period: بيانات الفترة السابقة (للتحليل الأفقي)
-            
+
         Returns:
             نتيجة التحليل
         """
         logger.info("Analyzing Income Statement...")
-        
+
         errors = []
         warnings = []
         recommendations = []
-        
+
         revenue = current_period.get("revenue", 0)
         cogs = current_period.get("cost_of_goods_sold", 0)
         gross_profit = current_period.get("gross_profit", revenue - cogs)
         operating_expenses = current_period.get("operating_expenses", 0)
         operating_income = current_period.get("operating_income", gross_profit - operating_expenses)
         net_income = current_period.get("net_income", operating_income)
-        
+
         # التحقق من صحة الحسابات
         calculated_gross_profit = revenue - cogs
         if abs(calculated_gross_profit - gross_profit) > 0.01:
@@ -176,7 +176,7 @@ class FinancialStatementsAuditAgent:
                 "reported": gross_profit,
                 "severity": "high"
             })
-        
+
         calculated_operating_income = gross_profit - operating_expenses
         if abs(calculated_operating_income - operating_income) > 0.01:
             errors.append({
@@ -186,7 +186,7 @@ class FinancialStatementsAuditAgent:
                 "reported": operating_income,
                 "severity": "high"
             })
-        
+
         # حساب النسب
         ratios = {}
         if revenue > 0:
@@ -194,14 +194,14 @@ class FinancialStatementsAuditAgent:
             ratios["operating_margin"] = operating_income / revenue
             ratios["net_margin"] = net_income / revenue
             ratios["expense_ratio"] = operating_expenses / revenue
-        
+
         # التحليل الأفقي
         horizontal_analysis = {}
         if prior_period:
             prior_revenue = prior_period.get("revenue", 0)
             if prior_revenue > 0:
                 horizontal_analysis["revenue_growth"] = (revenue - prior_revenue) / prior_revenue
-                
+
                 # كشف النمو غير الطبيعي
                 if horizontal_analysis["revenue_growth"] > self.manipulation_thresholds["revenue_growth_anomaly"]:
                     warnings.append({
@@ -211,7 +211,7 @@ class FinancialStatementsAuditAgent:
                         "recommendation": "مراجعة أسباب النمو المفاجئ والتحقق من صحته"
                     })
                     recommendations.append("فحص إيرادات الفترة الحالية للتأكد من عدم وجود إيرادات وهمية")
-        
+
         # التحليل الرأسي
         vertical_analysis = {}
         if revenue > 0:
@@ -219,7 +219,7 @@ class FinancialStatementsAuditAgent:
             vertical_analysis["gross_profit_percentage"] = gross_profit / revenue
             vertical_analysis["opex_percentage"] = operating_expenses / revenue
             vertical_analysis["net_income_percentage"] = net_income / revenue
-            
+
             # فحص الهوامش غير الطبيعية
             if ratios.get("gross_margin", 0) < 0.05:
                 warnings.append({
@@ -228,7 +228,7 @@ class FinancialStatementsAuditAgent:
                     "severity": "high"
                 })
                 recommendations.append("مراجعة تكلفة البضاعة المباعة والتحقق من اكتمالها")
-        
+
         # حساب درجة التلاعب
         manipulation_score = self._calculate_manipulation_score(
             ratios=ratios,
@@ -238,7 +238,7 @@ class FinancialStatementsAuditAgent:
             balance_sheet=None,
             cash_flow=None
         )
-        
+
         if manipulation_score > 0.7:
             errors.append({
                 "type": "manipulation_risk",
@@ -246,11 +246,11 @@ class FinancialStatementsAuditAgent:
                 "severity": "critical",
                 "description": "خطر عالي للتلاعب في القوائم المالية"
             })
-        
+
         # تحديد مستوى الثقة
         confidence = 1.0 - (len(errors) * 0.15 + len(warnings) * 0.05)
         confidence = max(0.0, min(1.0, confidence))
-        
+
         return FSAnalysisResult(
             statement_type="income_statement",
             period=current_period.get("period", "Unknown"),
@@ -264,7 +264,7 @@ class FinancialStatementsAuditAgent:
             recommendations=recommendations,
             confidence_level=confidence
         )
-    
+
     def analyze_balance_sheet(self,
                                assets: Dict[str, float],
                                liabilities: Dict[str, float],
@@ -272,30 +272,30 @@ class FinancialStatementsAuditAgent:
                                prior_period: Optional[Dict[str, Dict[str, float]]] = None) -> FSAnalysisResult:
         """
         تحليل قائمة المركز المالي (الميزانية العمومية)
-        
+
         Args:
             assets: الأصول (متداولة، ثابتة، إلخ)
             liabilities: الخصوم (متداولة، طويلة الأجل)
             equity: حقوق الملكية
-            
+
         Returns:
             نتيجة التحليل
         """
         logger.info("Analyzing Balance Sheet...")
-        
+
         errors = []
         warnings = []
         recommendations = []
-        
+
         # حساب المجاميع
         total_assets = sum(assets.values())
         total_liabilities = sum(liabilities.values())
         total_equity = sum(equity.values())
-        
+
         # التحقق من معادلة الميزانية
         accounting_equation = total_assets - (total_liabilities + total_equity)
         is_balanced = abs(accounting_equation) < 0.01
-        
+
         if not is_balanced:
             errors.append({
                 "type": "balance_sheet_imbalance",
@@ -306,15 +306,15 @@ class FinancialStatementsAuditAgent:
                 "severity": "critical"
             })
             recommendations.append("مراجعة فروقات الترصيد وتحديد سببها")
-        
+
         # حساب النسب المالية
         ratios = {}
         current_assets = assets.get("current_assets", 0)
         current_liabilities = liabilities.get("current_liabilities", 0)
-        
+
         if current_liabilities > 0:
             ratios["current_ratio"] = current_assets / current_liabilities
-            
+
             if ratios["current_ratio"] < 1.0:
                 warnings.append({
                     "type": "liquidity_risk",
@@ -322,18 +322,18 @@ class FinancialStatementsAuditAgent:
                     "severity": "high"
                 })
                 recommendations.append("مراجعة السيولة والقدرة على سداد الالتزامات قصيرة الأجل")
-        
+
         if total_assets > 0:
             ratios["debt_to_assets"] = total_liabilities / total_assets
             ratios["equity_ratio"] = total_equity / total_assets
-            
+
             if ratios["debt_to_assets"] > 0.7:
                 warnings.append({
                     "type": "high_leverage",
                     "description": f"نسبة المديونية عالية: {ratios['debt_to_assets']*100:.1f}%",
                     "severity": "medium"
                 })
-        
+
         # التحليل الأفقي
         horizontal_analysis = {}
         if prior_period:
@@ -342,7 +342,7 @@ class FinancialStatementsAuditAgent:
                 if key in prior_assets and prior_assets[key] > 0:
                     growth = (assets[key] - prior_assets[key]) / prior_assets[key]
                     horizontal_analysis[f"{key}_growth"] = growth
-                    
+
                     # كشف الزيادات غير الطبيعية
                     if growth > 0.50:
                         warnings.append({
@@ -351,7 +351,7 @@ class FinancialStatementsAuditAgent:
                             "growth": growth,
                             "severity": "medium"
                         })
-        
+
         # التحليل الرأسي
         vertical_analysis = {}
         if total_assets > 0:
@@ -359,7 +359,7 @@ class FinancialStatementsAuditAgent:
                 vertical_analysis[f"asset_{key}_pct"] = value / total_assets
             for key, value in liabilities.items():
                 vertical_analysis[f"liability_{key}_pct"] = value / total_assets
-        
+
         # حساب درجة التلاعب
         manipulation_score = self._calculate_manipulation_score(
             ratios=ratios,
@@ -369,10 +369,10 @@ class FinancialStatementsAuditAgent:
             balance_sheet={"assets": assets, "liabilities": liabilities, "equity": equity},
             cash_flow=None
         )
-        
+
         confidence = 1.0 - (len(errors) * 0.2 + len(warnings) * 0.05)
         confidence = max(0.0, min(1.0, confidence))
-        
+
         return FSAnalysisResult(
             statement_type="balance_sheet",
             period=datetime.now().strftime("%Y-%m"),
@@ -386,7 +386,7 @@ class FinancialStatementsAuditAgent:
             recommendations=recommendations,
             confidence_level=confidence
         )
-    
+
     def analyze_cash_flow(self,
                           operating_cf: float,
                           investing_cf: float,
@@ -395,7 +395,7 @@ class FinancialStatementsAuditAgent:
                           prior_period: Optional[Dict[str, float]] = None) -> FSAnalysisResult:
         """
         تحليل قائمة التدفقات النقدية
-        
+
         Args:
             operating_cf: التدفق النقدي من الأنشطة التشغيلية
             investing_cf: التدفق النقدي من الأنشطة الاستثمارية
@@ -403,20 +403,18 @@ class FinancialStatementsAuditAgent:
             net_income: صافي الدخل
         """
         logger.info("Analyzing Cash Flow Statement...")
-        
+
         errors = []
         warnings = []
         recommendations = []
-        
-        net_change_in_cash = operating_cf + investing_cf + financing_cf
-        
+
         # حساب النسب
         ratios = {}
-        
+
         # جودة الأرباح (Operating CF / Net Income)
         if net_income != 0:
             ratios["earnings_quality"] = operating_cf / net_income
-            
+
             if ratios["earnings_quality"] < 0.8:
                 warnings.append({
                     "type": "low_earnings_quality",
@@ -424,19 +422,19 @@ class FinancialStatementsAuditAgent:
                     "severity": "high"
                 })
                 recommendations.append("التحقق من الفروقات بين صافي الدخل والتدفق النقدي التشغيلي")
-        
+
         # نسبة التغطية النقدية
         if financing_cf < 0:  # هناك مدفوعات تمويلية
             coverage = operating_cf / abs(financing_cf)
             ratios["cash_coverage"] = coverage
-            
+
             if coverage < 1.0:
                 warnings.append({
                     "type": "insufficient_cash_coverage",
                     "description": f"التدفق التشغيلي لا يغطي الالتزامات التمويلية: {coverage:.2f}",
                     "severity": "high"
                 })
-        
+
         # كشف التباعد بين صافي الدخل والتدفق النقدي
         if net_income > 0 and operating_cf < 0:
             divergence = abs(net_income - operating_cf) / net_income
@@ -450,14 +448,14 @@ class FinancialStatementsAuditAgent:
                     "severity": "critical"
                 })
                 recommendations.append("فحص بنود المصروفات غير النقدية والتغيرات في رأس المال العامل")
-        
+
         # التحليل الأفقي
         horizontal_analysis = {}
         if prior_period:
             prior_operating = prior_period.get("operating_cf", 0)
             if prior_operating != 0:
                 horizontal_analysis["operating_cf_growth"] = (operating_cf - prior_operating) / prior_operating
-        
+
         # التحليل الرأسي
         total_cf = abs(operating_cf) + abs(investing_cf) + abs(financing_cf)
         vertical_analysis = {}
@@ -465,7 +463,7 @@ class FinancialStatementsAuditAgent:
             vertical_analysis["operating_pct"] = abs(operating_cf) / total_cf
             vertical_analysis["investing_pct"] = abs(investing_cf) / total_cf
             vertical_analysis["financing_pct"] = abs(financing_cf) / total_cf
-        
+
         manipulation_score = self._calculate_manipulation_score(
             ratios=ratios,
             horizontal={},
@@ -478,10 +476,10 @@ class FinancialStatementsAuditAgent:
                 "financing": financing_cf
             }
         )
-        
+
         confidence = 1.0 - (len(errors) * 0.2 + len(warnings) * 0.05)
         confidence = max(0.0, min(1.0, confidence))
-        
+
         return FSAnalysisResult(
             statement_type="cash_flow",
             period=datetime.now().strftime("%Y-%m"),
@@ -495,74 +493,74 @@ class FinancialStatementsAuditAgent:
             recommendations=recommendations,
             confidence_level=confidence
         )
-    
+
     def calculate_financial_ratios(self,
                                     income_statement: Dict[str, float],
                                     balance_sheet: Dict[str, Dict[str, float]]) -> Dict[str, float]:
         """
         حساب مجموعة شاملة من النسب المالية
-        
+
         Returns:
             قاموس يحتوي على جميع النسب المالية
         """
         ratios = {}
-        
+
         # استخراج البيانات
         revenue = income_statement.get("revenue", 0)
         net_income = income_statement.get("net_income", 0)
         cogs = income_statement.get("cost_of_goods_sold", 0)
-        
+
         assets = balance_sheet.get("assets", {})
         liabilities = balance_sheet.get("liabilities", {})
         equity = balance_sheet.get("equity", {})
-        
+
         total_assets = sum(assets.values())
         total_liabilities = sum(liabilities.values())
         total_equity = sum(equity.values())
-        
+
         current_assets = assets.get("current_assets", 0)
         current_liabilities = liabilities.get("current_liabilities", 0)
-        
+
         # نسب الربحية
         if revenue > 0:
             ratios["gross_profit_margin"] = (revenue - cogs) / revenue
             ratios["operating_profit_margin"] = income_statement.get("operating_income", 0) / revenue
             ratios["net_profit_margin"] = net_income / revenue
-        
+
         if total_assets > 0:
             ratios["return_on_assets"] = net_income / total_assets
-        
+
         if total_equity > 0:
             ratios["return_on_equity"] = net_income / total_equity
-        
+
         # نسب السيولة
         if current_liabilities > 0:
             quick_assets = current_assets - assets.get("inventory", 0)
             ratios["current_ratio"] = current_assets / current_liabilities
             ratios["quick_ratio"] = quick_assets / current_liabilities
             ratios["cash_ratio"] = assets.get("cash_and_equivalents", 0) / current_liabilities
-        
+
         # نسب المديونية
         if total_assets > 0:
             ratios["debt_to_assets"] = total_liabilities / total_assets
             ratios["equity_multiplier"] = total_assets / total_equity if total_equity > 0 else 0
-        
+
         if net_income > 0:
             ratios["interest_coverage"] = income_statement.get("operating_income", 0) / income_statement.get("interest_expense", 1)
-        
+
         # نسب النشاط
         avg_receivables = assets.get("accounts_receivable", 0)
         if avg_receivables > 0:
             ratios["receivables_turnover"] = revenue / avg_receivables
             ratios["days_sales_outstanding"] = 365 / ratios["receivables_turnover"]
-        
+
         inventory = assets.get("inventory", 0)
         if inventory > 0:
             ratios["inventory_turnover"] = cogs / inventory
             ratios["days_inventory_outstanding"] = 365 / ratios["inventory_turnover"]
-        
+
         return ratios
-    
+
     def _calculate_manipulation_score(self,
                                        ratios: Dict[str, float],
                                        horizontal: Dict[str, float],
@@ -572,24 +570,24 @@ class FinancialStatementsAuditAgent:
                                        cash_flow: Optional[Dict] = None) -> float:
         """
         حساب درجة احتمالية التلاعب في القوائم المالية
-        
+
         يستخدم خوارزمية Beneish M-Score المبسطة
         """
         score = 0.0
         risk_factors = 0
-        
+
         # DSRI - Days Sales Receivable Index
         if "receivables_turnover" in ratios:
             dsri = 1.0 / ratios["receivables_turnover"] if ratios["receivables_turnover"] > 0 else 0
             if dsri > 0.5:
                 score += 0.15
                 risk_factors += 1
-        
+
         # GMI - Gross Margin Index
         if horizontal.get("revenue_growth", 0) > 0.3:
             score += 0.1
             risk_factors += 1
-        
+
         # AQI - Asset Quality Index
         if balance_sheet:
             total_assets = sum(balance_sheet.get("assets", {}).values())
@@ -597,39 +595,39 @@ class FinancialStatementsAuditAgent:
             if total_assets > 0 and intangible / total_assets > 0.3:
                 score += 0.15
                 risk_factors += 1
-        
+
         # SGI - Sales Growth Index
         if horizontal.get("revenue_growth", 0) > 0.5:
             score += 0.2
             risk_factors += 1
-        
+
         # DEPI - Depreciation Index
         # (يمكن إضافته عند توفر بيانات الإهلاك)
-        
+
         # SGAI - Sales General Admin Index
         if "expense_ratio" in ratios and ratios["expense_ratio"] < 0.1:
             score += 0.1
             risk_factors += 1
-        
+
         # LVGI - Leverage Index
         if "debt_to_assets" in ratios and ratios["debt_to_assets"] > 0.7:
             score += 0.15
             risk_factors += 1
-        
+
         # TATA - Total Accruals to Total Assets
         if cash_flow and balance_sheet:
             net_income = current.get("net_income", 0) if current else 0
             operating_cf = cash_flow.get("operating", 0)
             total_assets = sum(balance_sheet.get("assets", {}).values())
-            
+
             if total_assets > 0:
                 accruals = abs(net_income - operating_cf) / total_assets
                 if accruals > 0.1:
                     score += 0.15
                     risk_factors += 1
-        
+
         return min(1.0, score)
-    
+
     def generate_full_audit_report(self,
                                     income_statement: Dict[str, float],
                                     balance_sheet_data: Dict[str, Dict[str, float]],
@@ -637,12 +635,12 @@ class FinancialStatementsAuditAgent:
                                     prior_year: Optional[Dict] = None) -> Dict[str, Any]:
         """
         إنشاء تقرير مراجعة كامل للقوائم المالية
-        
+
         Returns:
             تقرير شامل بجميع النتائج
         """
         logger.info("Generating Full Financial Statements Audit Report...")
-        
+
         # تحليل كل قائمة
         is_result = self.analyze_income_statement(income_statement, prior_year.get("income_statement") if prior_year else None)
         bs_result = self.analyze_balance_sheet(
@@ -657,10 +655,10 @@ class FinancialStatementsAuditAgent:
             cash_flow.get("financing_cf", 0),
             income_statement.get("net_income", 0)
         )
-        
+
         # حساب النسب الشاملة
         all_ratios = self.calculate_financial_ratios(income_statement, balance_sheet_data)
-        
+
         # تجميع التقرير
         report = {
             "audit_date": datetime.now().isoformat(),
@@ -711,26 +709,26 @@ class FinancialStatementsAuditAgent:
             },
             "comprehensive_ratios": all_ratios,
             "all_recommendations": list(set(
-                is_result.recommendations + 
-                bs_result.recommendations + 
+                is_result.recommendations +
+                bs_result.recommendations +
                 cf_result.recommendations
             ))
         }
-        
+
         return report
-    
+
     def execute(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         تنفيذ الوكيل على البيانات المقدمة
-        
+
         Args:
             data: بيانات القوائم المالية
-            
+
         Returns:
             تقرير المراجعة الكامل
         """
         logger.info(f"Executing {self.name}...")
-        
+
         try:
             return self.generate_full_audit_report(
                 income_statement=data.get("income_statement", {}),
@@ -791,11 +789,11 @@ if __name__ == "__main__":
             }
         }
     }
-    
+
     # تشغيل الوكيل
     agent = FinancialStatementsAuditAgent()
     result = agent.execute(sample_data)
-    
+
     print("=" * 80)
     print("Financial Statements Audit Report")
     print("=" * 80)

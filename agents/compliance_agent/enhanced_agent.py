@@ -4,19 +4,19 @@ AI-powered compliance checking against accounting standards
 Enterprise AI Financial Audit & Intelligence Platform
 """
 
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
-from backend.agents.enhanced_agent_base import EnhancedAgent, AgentResult
-from backend.ai_engine.llm_interface import LLMMessage
+from backend.agents.enhanced_agent_base import AgentResult, EnhancedAgent
 
 
 class EnhancedComplianceAgent(EnhancedAgent):
     """
     Enhanced Compliance Standards AI Agent
     Uses LLM for intelligent compliance checking and recommendations
-    
+
     Responsibilities:
     - Check compliance against accounting standards (IFRS, GAAP, ISA, Egyptian standards)
     - Identify compliance violations
@@ -346,32 +346,59 @@ class EnhancedComplianceAgent(EnhancedAgent):
         compliance_results: Dict[str, Any],
         standards: List[str]
     ) -> str:
-        """Create prompt for AI compliance analysis"""
-        violations_summary = "\n".join([
-            f"- {standard}: {len(compliance_results.get('compliance_by_standard', {}).get(standard, {}).get('violations', []))} violations"
-            for standard in standards
-        ])
+        """Create structured prompt for AI compliance analysis"""
+        by_standard = compliance_results.get('compliance_by_standard', {})
+        violations_summary = ""
+        for std in standards:
+            std_data = by_standard.get(std, {})
+            violations = std_data.get('violations', [])
+            score = std_data.get('compliance_score', 0)
+            violations_summary += f"\n  {std} (Score: {score}/100): {len(violations)} violations"
+            for v in violations[:5]:
+                violations_summary += f"\n    - {v.get('type', 'N/A')}: {v.get('requirement', '')} [{v.get('severity', 'medium')}]"
 
-        prompt = f"""
-        You are a compliance expert. Analyze the following compliance check results:
-        
-        Standards Checked: {', '.join(standards)}
-        
-        Compliance Status by Standard:
-        {violations_summary}
-        
-        Overall Compliance Score: {compliance_results.get('overall_compliance_score', 0)}/100
-        Total Violations: {compliance_results.get('total_violations', 0)}
-        
-        Based on this analysis:
-        1. What are the most critical compliance issues?
-        2. What are the root causes of these violations?
-        3. What corrective actions should be taken?
-        4. What is the timeline for remediation?
-        5. What preventive measures should be implemented?
-        
-        Provide a detailed compliance analysis and recommendations.
-        """
+        all_violations = []
+        for std_data in by_standard.values():
+            all_violations.extend(std_data.get('violations', []))
+        severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        for v in all_violations:
+            sev = v.get('severity', 'medium').lower()
+            if sev in severity_counts:
+                severity_counts[sev] += 1
+        sev_line = ", ".join(f"{k}: {v}" for k, v in severity_counts.items() if v > 0)
+
+        prompt = f"""You are a senior compliance officer with expertise in international regulatory frameworks (IFRS, GAAP, SOX, VAT/GST, AML/KYC). Analyze the following compliance check results.
+
+Role: Chief Compliance Officer
+Task: Assess compliance health and recommend remediation actions
+Format: Structured analysis with clear priority levels
+
+STANDARDS COVERED
+{', '.join(standards)}
+
+COMPLIANCE RESULTS BY STANDARD
+{violations_summary}
+
+OVERALL METRICS
+- Overall Compliance Score: {compliance_results.get('overall_compliance_score', 0)}/100
+- Total Violations: {compliance_results.get('total_violations', 0)}
+- Severity Breakdown: {sev_line or 'none'}
+
+Provide:
+
+1. CRITICAL ISSUES (list items requiring IMMEDIATE attention, with regulatory risk level)
+
+2. ROOT CAUSE ANALYSIS (identify systemic vs. isolated issues)
+
+3. CORRECTIVE ACTIONS (specific steps with responsible party suggestions)
+
+4. REMEDIATION TIMELINE (immediate: <30 days, short-term: 30-90 days, long-term: >90 days)
+
+5. PREVENTIVE MEASURES (process/policy changes to prevent recurrence)
+
+6. REGULATORY RISK ASSESSMENT (likelihood of regulatory action: HIGH/MEDIUM/LOW)
+
+Keep analysis concise and actionable. Prioritize items with critical/high severity."""
         return prompt
 
     def _parse_compliance_response(self, response: str) -> Dict[str, Any]:
@@ -418,6 +445,21 @@ class EnhancedComplianceAgent(EnhancedAgent):
         next_steps.extend(ai_insights.get('recommendations', [])[:2])
 
         return next_steps
+
+    # Compatibility methods for orchestrator / ChiefAgent
+    async def check_compliance(self, financial_data: Any) -> Dict[str, Any]:
+        """Called by AgentOrchestrator and ChiefAgent - delegates to execute()"""
+        kwargs = {"financial_data": financial_data, "standards": ["IFRS", "GAAP", "SOX"]} if isinstance(financial_data, dict) else {"financial_data": {"data": financial_data}, "standards": ["IFRS", "GAAP", "SOX"]}
+        result = await self.execute(**kwargs)
+        return {
+            "agent": self.name,
+            "status": "completed" if getattr(result, 'success', False) else "failed",
+            "timestamp": datetime.now().isoformat(),
+            "findings": getattr(result, 'data', result) or {},
+            "ai_insights": getattr(result, 'ai_insights', None),
+            "confidence_score": getattr(result, 'confidence_score', 0.0),
+            "overall_compliance_score": getattr(result, 'data', {}).get('overall_compliance_score', 0) if isinstance(getattr(result, 'data', None), dict) else 0,
+        }
 
     # Tool implementations
     async def _check_standard_compliance_tool(

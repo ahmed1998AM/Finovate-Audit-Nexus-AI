@@ -5,17 +5,18 @@ Enterprise AI Financial Audit & Intelligence Platform
 """
 
 import os
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from loguru import logger
 
 try:
-    import google.generativeai as genai
+    from google import genai
 except ImportError:
-    logger.error("Google Generative AI library not installed. Install with: pip install google-generativeai")
+    logger.error("Google GenAI library not installed. Install with: pip install google-genai")
     genai = None
 
-from backend.ai_engine.llm_interface import LLMInterface, LLMResponse, LLMMessage
+from backend.ai_engine.llm_interface import LLMInterface, LLMMessage, LLMResponse
 
 
 class GeminiProvider(LLMInterface):
@@ -47,10 +48,10 @@ class GeminiProvider(LLMInterface):
         super().__init__(provider_name, api_key, model)
 
         if genai is None:
-            raise ImportError("Google Generative AI library not installed")
+            raise ImportError("Google GenAI library not installed")
 
-        genai.configure(api_key=api_key)
-        self.model_instance = genai.GenerativeModel(model)
+        self.client = genai.Client(api_key=api_key)
+        self.model_name = model
 
         logger.info(f"Google Gemini provider initialized with model: {model}")
 
@@ -65,9 +66,9 @@ class GeminiProvider(LLMInterface):
     ) -> LLMResponse:
         """Generate text from a prompt using Google Gemini API"""
         try:
-            logger.info(f"Generating text with Google Gemini model: {self.model}")
+            logger.info(f"Generating text with Google Gemini model: {self.model_name}")
 
-            generation_config = genai.types.GenerationConfig(
+            config = genai.types.GenerateContentConfig(
                 temperature=temperature,
                 top_p=top_p,
                 max_output_tokens=max_tokens,
@@ -75,14 +76,14 @@ class GeminiProvider(LLMInterface):
                 presence_penalty=presence_penalty
             )
 
-            response = self.model_instance.generate_content(
-                prompt,
-                generation_config=generation_config
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=config
             )
 
             content = response.text
-            # Estimate tokens (Gemini doesn't always provide exact token count)
-            tokens_used = len(content.split()) * 1.3  # Rough estimate
+            tokens_used = len(content.split()) * 1.3
 
             self.tokens_used += int(tokens_used)
             self.requests_count += 1
@@ -91,7 +92,7 @@ class GeminiProvider(LLMInterface):
 
             return LLMResponse(
                 content=content,
-                model=self.model,
+                model=self.model_name,
                 provider=self.provider_name,
                 tokens_used=int(tokens_used),
                 timestamp=datetime.now(),
@@ -114,14 +115,13 @@ class GeminiProvider(LLMInterface):
     ) -> LLMResponse:
         """Generate chat completion using Google Gemini API"""
         try:
-            logger.info(f"Generating chat completion with Google Gemini model: {self.model}")
+            logger.info(f"Generating chat completion with Google Gemini model: {self.model_name}")
 
-            generation_config = genai.types.GenerationConfig(
+            config = genai.types.GenerateContentConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens
             )
 
-            # Convert LLMMessage objects to Gemini format
             chat_messages = []
 
             for msg in messages:
@@ -130,14 +130,15 @@ class GeminiProvider(LLMInterface):
                     "parts": [msg.content]
                 })
 
-            chat = self.model_instance.start_chat(history=chat_messages[:-1])
-            response = chat.send_message(
-                chat_messages[-1]["parts"][0],
-                generation_config=generation_config
+            chat = self.client.chats.create(
+                model=self.model_name,
+                history=chat_messages[:-1],
+                config=config
             )
+            response = chat.send_message(chat_messages[-1]["parts"][0])
 
             content = response.text
-            tokens_used = len(content.split()) * 1.3  # Rough estimate
+            tokens_used = len(content.split()) * 1.3
 
             self.tokens_used += int(tokens_used)
             self.requests_count += 1
@@ -146,7 +147,7 @@ class GeminiProvider(LLMInterface):
 
             return LLMResponse(
                 content=content,
-                model=self.model,
+                model=self.model_name,
                 provider=self.provider_name,
                 tokens_used=int(tokens_used),
                 timestamp=datetime.now(),
@@ -165,12 +166,12 @@ class GeminiProvider(LLMInterface):
         try:
             logger.info("Generating embeddings with Google Gemini")
 
-            result = genai.embed_content(
+            result = self.client.models.embed_content(
                 model="models/embedding-001",
-                content=text
+                contents=text
             )
 
-            embedding = result["embedding"]
+            embedding = result.embeddings[0].values
             self.tokens_used += 1
             self.requests_count += 1
 
@@ -203,7 +204,11 @@ class GeminiProvider(LLMInterface):
         try:
             logger.info("Validating Google Gemini connection")
 
-            response = self.model_instance.generate_content("Hello", stream=False)
+            self.client.models.generate_content(
+                model=self.model_name,
+                contents="Hello",
+                config=genai.types.GenerateContentConfig(max_output_tokens=10)
+            )
 
             logger.info("Google Gemini connection validated successfully")
             return True
@@ -217,7 +222,7 @@ class GeminiProvider(LLMInterface):
         return {
             "provider": self.provider_name,
             "name": "Google Gemini",
-            "model": self.model,
+            "model": self.model_name,
             "supported_models": [
                 "gemini-pro",
                 "gemini-pro-vision",

@@ -1,15 +1,22 @@
-"""
-Finovate Audit Nexus AI - AI Agents API Endpoints
-AI Agent Management and Execution
-"""
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+import asyncio
 from datetime import datetime
-from backend.services.audit_service import get_audit_service
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException
+from loguru import logger
+from pydantic import BaseModel
+
+from backend.orchestrator.agent_orchestrator import AgentOrchestrator
 
 router = APIRouter()
-audit_service = get_audit_service()
+
+_orchestrator: AgentOrchestrator = None
+
+def _get_orchestrator() -> AgentOrchestrator:
+    global _orchestrator
+    if _orchestrator is None:
+        _orchestrator = AgentOrchestrator()
+    return _orchestrator
 
 class AgentTaskRequest(BaseModel):
     agent_name: str
@@ -19,96 +26,102 @@ class AgentTaskRequest(BaseModel):
 class AgentStatusResponse(BaseModel):
     agent_name: str
     status: str
-    last_execution: Optional[datetime]
-    tasks_completed: int
-    success_rate: float
+    last_execution: Optional[datetime] = None
+    tasks_completed: int = 0
+    success_rate: float = 0.0
 
 @router.get("/", response_model=List[AgentStatusResponse])
 async def get_agents():
-    """الحصول على قائمة جميع الوكلاء الذكية وحالتهم"""
-    return [
-        {
-            "agent_name": "Chief Audit AI Agent",
-            "status": "Active",
+    orch = _get_orchestrator()
+    agents_list = []
+    for name, info in orch.agents.items():
+        inst = info.get("instance")
+        agents_list.append({
+            "agent_name": name,
+            "status": info.get("status", "registered"),
             "last_execution": datetime.now(),
-            "tasks_completed": 150,
-            "success_rate": 98.5
-        },
-        {
-            "agent_name": "Journal Entry Audit Agent",
-            "status": "Active",
-            "last_execution": datetime.now(),
-            "tasks_completed": 500,
-            "success_rate": 99.2
-        },
-        {
-            "agent_name": "Fraud Detection AI Agent",
-            "status": "Active",
-            "last_execution": datetime.now(),
-            "tasks_completed": 75,
-            "success_rate": 97.8
-        }
-    ]
+            "tasks_completed": getattr(inst, "tasks_completed", 0) if inst else 0,
+            "success_rate": getattr(inst, "success_rate", 100.0) if inst else 0.0,
+        })
+    if not agents_list:
+        from backend.orchestrator.agent_registry import register_agents_in_orchestrator
+        register_agents_in_orchestrator(orch)
+        for name, info in orch.agents.items():
+            agents_list.append({
+                "agent_name": name,
+                "status": info.get("status", "registered"),
+                "last_execution": datetime.now(),
+                "tasks_completed": 0,
+                "success_rate": 100.0,
+            })
+    return agents_list
 
 @router.get("/{agent_name}/status")
 async def get_agent_status(agent_name: str):
-    """الحصول على حالة وكيل معين"""
+    orch = _get_orchestrator()
+    info = orch.agents.get(agent_name)
+    if not info:
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
+    inst = info.get("instance")
     return {
         "agent_name": agent_name,
-        "status": "Active",
-        "last_execution": datetime.now(),
-        "tasks_completed": 100,
-        "success_rate": 98.0
+        "status": info.get("status", "registered"),
+        "class_name": type(inst).__name__ if inst else "",
+        "has_execute": hasattr(inst, "execute") if inst else False,
+        "has_analyze": hasattr(inst, "analyze") if inst else False,
     }
 
 @router.post("/execute")
 async def execute_agent_task(task: AgentTaskRequest):
-    """تنفيذ مهمة لوكيل ذكي معين"""
-    if task.agent_name == "Chief Audit AI Agent" and task.task_type == "full_audit":
-        company_code = task.parameters.get("company_code", "1000")
-        fiscal_year = task.parameters.get("fiscal_year", "2024")
-        engagement_id = task.parameters.get("engagement_id", 1)
-        
-        try:
-            results = await audit_service.run_full_ai_audit(company_code, fiscal_year, engagement_id)
-            return {
-                "success": True,
-                "agent_name": task.agent_name,
-                "status": "Completed",
-                "results": results
-            }
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-            
-    return {
-        "success": True,
-        "task_id": "TASK-2025-001",
-        "agent_name": task.agent_name,
-        "status": "Processing",
-        "message": f"Task '{task.task_type}' submitted to {task.agent_name}"
-    }
+    orch = _get_orchestrator()
+    info = orch.agents.get(task.agent_name)
+    if not info:
+        from backend.orchestrator.agent_registry import register_agents_in_orchestrator
+        register_agents_in_orchestrator(orch)
+        info = orch.agents.get(task.agent_name)
+    if not info:
+        raise HTTPException(status_code=404, detail=f"Agent '{task.agent_name}' not found")
+    inst = info.get("instance")
+    if inst is None:
+        raise HTTPException(status_code=500, detail=f"Agent '{task.agent_name}' failed to load")
+    try:
+        kwargs = task.parameters or {}
+        if hasattr(inst, "execute") and callable(inst.execute):
+            if asyncio.iscoroutinefunction(inst.execute):
+                result = await inst.execute(**kwargs)
+            else:
+                result = inst.execute(**kwargs)
+        elif hasattr(inst, "analyze") and callable(inst.analyze):
+            if asyncio.iscoroutinefunction(inst.analyze):
+                result = await inst.analyze(**kwargs)
+            else:
+                result = inst.analyze(**kwargs)
+        else:
+            raise HTTPException(status_code=400, detail=f"Agent '{task.agent_name}' has no executable method")
+        return {"success": True, "agent_name": task.agent_name, "status": "Completed", "results": result}
+    except Exception as e:
+        logger.error(f"Agent execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{agent_name}/logs")
 async def get_agent_logs(agent_name: str, limit: int = 50):
-    """الحصول على سجلات وكيل ذكي"""
-    return {
-        "agent_name": agent_name,
-        "logs": [
-            {
-                "timestamp": datetime.now(),
-                "task_id": "TASK-001",
-                "status": "Success",
-                "execution_time": 2.5
-            }
-        ]
-    }
+    orch = _get_orchestrator()
+    if agent_name not in orch.agents:
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
+    return {"agent_name": agent_name, "logs": [], "message": "Logging not yet implemented for individual agents"}
 
 @router.post("/{agent_name}/stop")
 async def stop_agent(agent_name: str):
-    """إيقاف وكيل ذكي"""
+    orch = _get_orchestrator()
+    if agent_name not in orch.agents:
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
+    orch.agents[agent_name]["status"] = "stopped"
     return {"success": True, "message": f"Agent {agent_name} stopped"}
 
 @router.post("/{agent_name}/start")
 async def start_agent(agent_name: str):
-    """تشغيل وكيل ذكي"""
+    orch = _get_orchestrator()
+    if agent_name not in orch.agents:
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' not found")
+    orch.agents[agent_name]["status"] = "active"
     return {"success": True, "message": f"Agent {agent_name} started"}

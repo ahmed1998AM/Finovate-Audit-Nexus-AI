@@ -3,11 +3,12 @@ Finovate Audit Nexus AI - Workflow Engine
 محرك إدارة سير عمل التدقيق
 """
 
-from typing import Dict, List, Any, Optional, Callable
+import asyncio
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from dataclasses import dataclass, field
-import asyncio
+from typing import Any, Callable, Dict, List, Optional
+
 from loguru import logger
 
 
@@ -67,13 +68,13 @@ class WorkflowEngine:
         self.workflows: Dict[str, WorkflowInstance] = {}
         self.workflow_templates: Dict[str, List[WorkflowTask]] = {}
         self.task_executors: Dict[str, Callable] = {}
-        
+
         # تسجيل قوالب سير العمل الافتراضية
         self._register_default_workflows()
 
     def _register_default_workflows(self):
         """تسجيل قوالب سير العمل الافتراضية"""
-        
+
         # سير عمل التدقيق الكامل
         self.workflow_templates["full_audit"] = [
             WorkflowTask(
@@ -138,7 +139,7 @@ class WorkflowEngine:
                 dependencies=["risk_assessment", "compliance_check"]
             )
         ]
-        
+
         # سير عمل مراجعة الضرائب
         self.workflow_templates["tax_audit"] = [
             WorkflowTask(
@@ -175,7 +176,7 @@ class WorkflowEngine:
                 dependencies=["vat_review", "income_tax_review", "withholding_tax"]
             )
         ]
-        
+
         # سير عمل كشف الاحتيال
         self.workflow_templates["fraud_investigation"] = [
             WorkflowTask(
@@ -228,19 +229,19 @@ class WorkflowEngine:
     def create_workflow(self, workflow_type: str, context: Optional[Dict[str, Any]] = None) -> str:
         """
         إنشاء مثيل سير عمل جديد
-        
+
         Args:
             workflow_type: نوع سير العمل (full_audit, tax_audit, etc.)
             context: سياق البيانات لسير العمل
-            
+
         Returns:
             workflow_id: معرف سير العمل المنشأ
         """
         if workflow_type not in self.workflow_templates:
             raise ValueError(f"Unknown workflow type: {workflow_type}")
-        
+
         workflow_id = f"{workflow_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
+
         # نسخ المهام من القالب
         tasks = []
         for template_task in self.workflow_templates[workflow_type]:
@@ -252,58 +253,58 @@ class WorkflowEngine:
                 dependencies=template_task.dependencies.copy()
             )
             tasks.append(task)
-        
+
         workflow = WorkflowInstance(
             workflow_id=workflow_id,
             workflow_type=workflow_type,
             tasks=tasks,
             context=context or {}
         )
-        
+
         self.workflows[workflow_id] = workflow
         logger.info(f"Created workflow instance: {workflow_id}")
-        
+
         return workflow_id
 
     async def execute_workflow(self, workflow_id: str) -> Dict[str, Any]:
         """
         تنفيذ سير العمل
-        
+
         Args:
             workflow_id: معرف سير العمل
-            
+
         Returns:
             نتائج التنفيذ
         """
         if workflow_id not in self.workflows:
             raise ValueError(f"Workflow not found: {workflow_id}")
-        
+
         workflow = self.workflows[workflow_id]
         workflow.status = WorkflowStatus.RUNNING
         workflow.started_at = datetime.now()
-        
+
         logger.info(f"Starting workflow execution: {workflow_id}")
-        
+
         try:
             # تنفيذ المهام حسب الترتيب والاعتماديات
             completed_tasks = set()
-            
+
             while len(completed_tasks) < len(workflow.tasks):
                 # العثور على المهام الجاهزة للتنفيذ
                 ready_tasks = self._get_ready_tasks(workflow, completed_tasks)
-                
+
                 if not ready_tasks:
                     # لا توجد مهام جاهزة - قد يكون هناك خطأ في الاعتماديات
                     logger.warning("No ready tasks found - possible dependency issue")
                     break
-                
+
                 # تنفيذ المهام الجاهزة بشكل متوازٍ
                 tasks_to_run = []
                 for task in ready_tasks:
                     tasks_to_run.append(self._execute_task(workflow, task))
-                
+
                 results = await asyncio.gather(*tasks_to_run, return_exceptions=True)
-                
+
                 # تحديث حالة المهام
                 for task, result in zip(ready_tasks, results):
                     if isinstance(result, Exception):
@@ -316,18 +317,18 @@ class WorkflowEngine:
                         task.completed_at = datetime.now()
                         completed_tasks.add(task.task_id)
                         logger.info(f"Task {task.task_id} completed successfully")
-            
+
             # تحديث حالة سير العمل
             workflow.completed_at = datetime.now()
             failed_tasks = [t for t in workflow.tasks if t.status == TaskStatus.FAILED]
-            
+
             if failed_tasks:
                 workflow.status = WorkflowStatus.FAILED
             else:
                 workflow.status = WorkflowStatus.COMPLETED
-            
+
             return self._get_workflow_results(workflow)
-            
+
         except Exception as e:
             workflow.status = WorkflowStatus.FAILED
             workflow.completed_at = datetime.now()
@@ -349,15 +350,15 @@ class WorkflowEngine:
         """تنفيذ مهمة محددة"""
         task.status = TaskStatus.IN_PROGRESS
         task.started_at = datetime.now()
-        
+
         logger.info(f"Executing task: {task.task_id}")
-        
+
         # محاولة التنفيذ مع إعادة المحاولة
         for attempt in range(task.max_retries + 1):
             try:
                 # البحث عن منفذ المهمة
                 executor = self.task_executors.get(task.task_id)
-                
+
                 if executor:
                     # تنفيذ باستخدام المنفذ المسجل
                     result = await executor(workflow.context)
@@ -367,9 +368,9 @@ class WorkflowEngine:
                 else:
                     # تنفيذ افتراضي
                     result = {"status": "completed", "task_id": task.task_id}
-                
+
                 return result
-                
+
             except Exception as e:
                 task.retry_count = attempt + 1
                 if attempt < task.max_retries:
@@ -377,7 +378,7 @@ class WorkflowEngine:
                     await asyncio.sleep(2 ** attempt)  # Exponential backoff
                 else:
                     raise e
-        
+
         return None
 
     async def _execute_with_agent(self, agent_name: str, context: Dict[str, Any]) -> Any:
@@ -416,7 +417,7 @@ class WorkflowEngine:
         """الحصول على حالة سير العمل"""
         if workflow_id not in self.workflows:
             return None
-        
+
         workflow = self.workflows[workflow_id]
         return {
             "workflow_id": workflow.workflow_id,
@@ -429,7 +430,7 @@ class WorkflowEngine:
         """إيقاف مؤقت لسير العمل"""
         if workflow_id not in self.workflows:
             return False
-        
+
         workflow = self.workflows[workflow_id]
         if workflow.status == WorkflowStatus.RUNNING:
             workflow.status = WorkflowStatus.PAUSED
@@ -441,7 +442,7 @@ class WorkflowEngine:
         """استئناف سير العمل الموقوف"""
         if workflow_id not in self.workflows:
             return False
-        
+
         workflow = self.workflows[workflow_id]
         if workflow.status == WorkflowStatus.PAUSED:
             workflow.status = WorkflowStatus.RUNNING
@@ -453,16 +454,16 @@ class WorkflowEngine:
         """إلغاء سير العمل"""
         if workflow_id not in self.workflows:
             return False
-        
+
         workflow = self.workflows[workflow_id]
         workflow.status = WorkflowStatus.CANCELLED
         workflow.completed_at = datetime.now()
-        
+
         # إلغاء المهام غير المكتملة
         for task in workflow.tasks:
             if task.status in [TaskStatus.PENDING, TaskStatus.IN_PROGRESS]:
                 task.status = TaskStatus.SKIPPED
-        
+
         logger.info(f"Cancelled workflow: {workflow_id}")
         return True
 
@@ -485,23 +486,23 @@ class WorkflowEngine:
 async def main():
     """مثال على استخدام محرك سير العمل"""
     engine = WorkflowEngine()
-    
+
     # إنشاء سير عمل تدقيق كامل
     workflow_id = engine.create_workflow("full_audit", {
         "company_id": "COMP_001",
         "period": "2024-Q4",
         "data_path": "/uploads/financial_data.xlsx"
     })
-    
+
     print(f"Created workflow: {workflow_id}")
-    
+
     # تنفيذ سير العمل
     results = await engine.execute_workflow(workflow_id)
-    
+
     print("\nWorkflow Results:")
     print(f"Status: {results['status']}")
     print(f"Completed Tasks: {results['completed_tasks']}/{results['total_tasks']}")
-    
+
     for task_result in results['task_results']:
         print(f"  - {task_result['name']}: {task_result['status']}")
 

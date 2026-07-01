@@ -1,247 +1,199 @@
-"""
-Finovate Audit Nexus AI - Agent Status Widget Component
-Widget for displaying real-time status of AI audit agents.
-"""
-
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                                 QFrame, QProgressBar, QSpacerItem, QSizePolicy)
-from PySide6.QtCore import Qt, QTimer
-from typing import Dict, List
-from .theme_manager import ThemeManager
+from PySide6.QtCore import Qt
+from typing import Dict
+
+from frontend.styles.design_system import Color
 
 
 class AgentStatusWidget(QFrame):
-    """Widget displaying the status of a single AI agent."""
-    
-    def __init__(self, agent_name: str, agent_id: str = "", theme_manager: ThemeManager = None):
+    STATUS_COLORS = {
+        "idle": Color.TEXT_SECONDARY,
+        "running": Color.INFO,
+        "completed": Color.SUCCESS,
+        "error": Color.ERROR,
+        "warning": Color.WARNING,
+    }
+
+    def __init__(self, agent_name: str, agent_id: str = ""):
         super().__init__()
-        
-        self.theme_manager = theme_manager or ThemeManager()
         self.agent_name = agent_name
         self.agent_id = agent_id
-        self.status = "idle"  # idle, running, completed, error
-        
-        self.setup_ui()
-        self.apply_style()
-    
-    def setup_ui(self):
-        """Setup the widget UI."""
+        self.status = "idle"
+        self._setup_ui()
+        self._apply_style()
+
+    def _setup_ui(self):
         self.setFrameShape(QFrame.StyledPanel)
         self.setFrameShadow(QFrame.Raised)
         self.setObjectName("agentCard")
         self.setMinimumHeight(100)
-        
+
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
-        layout.setContentsMargins(15, 15, 15, 15)
-        
-        # Header row: Name + Status indicator
-        header_layout = QHBoxLayout()
-        
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        header = QHBoxLayout()
         self.name_label = QLabel(self.agent_name)
-        self.name_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        header_layout.addWidget(self.name_label)
-        
-        header_layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
-        
-        # Status indicator
+        self.name_label.setStyleSheet(f"font-size: 15px; font-weight: 600; color: {Color.TEXT_PRIMARY};")
+        header.addWidget(self.name_label)
+        header.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+
         self.status_dot = QLabel("●")
-        self.status_dot.setStyleSheet(f"font-size: 20px; color: {self.get_status_color()};")
-        header_layout.addWidget(self.status_dot)
-        
+        self.status_dot.setStyleSheet(f"font-size: 18px; color: {self._get_status_color()};")
+        header.addWidget(self.status_dot)
+
         self.status_label = QLabel("IDLE")
-        self.status_label.setStyleSheet("font-size: 12px; color: gray;")
-        header_layout.addWidget(self.status_label)
-        
-        layout.addLayout(header_layout)
-        
-        # Agent ID (if provided)
+        self.status_label.setStyleSheet(f"font-size: 11px; color: {Color.TEXT_SECONDARY}; font-weight: 500;")
+        header.addWidget(self.status_label)
+
+        layout.addLayout(header)
+
         if self.agent_id:
             id_label = QLabel(f"ID: {self.agent_id}")
-            id_label.setStyleSheet("font-size: 11px; color: gray;")
+            id_label.setStyleSheet(f"font-size: 11px; color: {Color.TEXT_MUTED};")
             layout.addWidget(id_label)
-        
-        # Progress bar
+
         self.progress_bar = QProgressBar()
-        self.progress_bar.setMinimum(0)
-        self.progress_bar.setMaximum(100)
+        self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
         self.progress_bar.setTextVisible(True)
         self.progress_bar.setFormat("%p%")
-        self.progress_bar.setMinimumHeight(20)
+        self.progress_bar.setMinimumHeight(6)
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: none; border-radius: 3px;
+                background-color: {Color.BG_LIGHT}; height: 6px;
+                text-align: center; font-size: 10px;
+            }}
+            QProgressBar::chunk {{
+                background-color: {self._get_status_color()}; border-radius: 3px;
+            }}
+        """)
         layout.addWidget(self.progress_bar)
-        
-        # Stats row
-        stats_layout = QHBoxLayout()
-        
+
+        stats = QHBoxLayout()
         self.tasks_label = QLabel("Tasks: 0")
-        self.tasks_label.setStyleSheet("font-size: 12px;")
-        stats_layout.addWidget(self.tasks_label)
-        
-        stats_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
-        
+        self.tasks_label.setStyleSheet(f"font-size: 11px; color: {Color.TEXT_SECONDARY};")
+        stats.addWidget(self.tasks_label)
+        stats.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.last_run_label = QLabel("Last run: Never")
-        self.last_run_label.setStyleSheet("font-size: 11px; color: gray;")
-        stats_layout.addWidget(self.last_run_label)
-        
-        layout.addLayout(stats_layout)
-    
-    def get_status_color(self) -> str:
-        """Get color based on current status."""
-        colors = {
-            "idle": self.theme_manager.get_color("text_secondary"),
-            "running": self.theme_manager.get_color("info"),
-            "completed": self.theme_manager.get_color("success"),
-            "error": self.theme_manager.get_color("error"),
-            "warning": self.theme_manager.get_color("warning")
-        }
-        return colors.get(self.status, colors["idle"])
-    
-    def apply_style(self):
-        """Apply widget styling."""
+        self.last_run_label.setStyleSheet(f"font-size: 11px; color: {Color.TEXT_MUTED};")
+        stats.addWidget(self.last_run_label)
+        layout.addLayout(stats)
+
+    def _get_status_color(self) -> str:
+        return self.STATUS_COLORS.get(self.status, self.STATUS_COLORS["idle"])
+
+    def _apply_style(self):
         self.setStyleSheet(f"""
             QFrame#agentCard {{
-                background-color: {self.theme_manager.get_color('surface')};
+                background-color: {Color.BG_CARD};
                 border-radius: 10px;
                 padding: 10px;
-                border: 1px solid {self.theme_manager.get_color('primary')};
+                border: 1px solid {Color.BORDER};
             }}
-            
             QFrame#agentCard:hover {{
-                border: 2px solid {self.theme_manager.get_color('secondary')};
-            }}
-            
-            QProgressBar {{
-                border: none;
-                border-radius: 5px;
-                background-color: {self.theme_manager.get_color('background')};
-                text-align: center;
-            }}
-            
-            QProgressBar::chunk {{
-                background-color: {self.get_status_color()};
-                border-radius: 5px;
+                border: 1px solid {Color.PRIMARY};
             }}
         """)
-    
+
     def set_status(self, status: str, progress: int = 0):
-        """Update agent status and progress."""
         self.status = status
-        self.status_dot.setStyleSheet(f"font-size: 20px; color: {self.get_status_color()};")
+        color = self._get_status_color()
+        self.status_dot.setStyleSheet(f"font-size: 18px; color: {color};")
         self.status_label.setText(status.upper())
-        self.status_label.setStyleSheet(f"font-size: 12px; color: {self.get_status_color()};")
+        self.status_label.setStyleSheet(f"font-size: 11px; color: {color}; font-weight: 500;")
         self.progress_bar.setValue(progress)
-        
-        # Update progress bar color
-        self.setStyleSheet(f"""
-            QFrame#agentCard {{
-                background-color: {self.theme_manager.get_color('surface')};
-                border-radius: 10px;
-                padding: 10px;
-                border: 1px solid {self.theme_manager.get_color('primary')};
-            }}
-            
+        self.progress_bar.setStyleSheet(f"""
             QProgressBar {{
-                border: none;
-                border-radius: 5px;
-                background-color: {self.theme_manager.get_color('background')};
-                text-align: center;
+                border: none; border-radius: 3px;
+                background-color: {Color.BG_LIGHT}; height: 6px;
+                text-align: center; font-size: 10px;
             }}
-            
             QProgressBar::chunk {{
-                background-color: {self.get_status_color()};
-                border-radius: 5px;
+                background-color: {color}; border-radius: 3px;
             }}
         """)
-    
+
     def set_tasks_count(self, count: int):
-        """Update tasks count."""
         self.tasks_label.setText(f"Tasks: {count}")
-    
+
     def set_last_run(self, timestamp: str):
-        """Update last run timestamp."""
         self.last_run_label.setText(f"Last run: {timestamp}")
 
 
 class AgentsDashboard(QWidget):
-    """Dashboard displaying all AI agents status."""
-    
-    def __init__(self, theme_manager: ThemeManager = None):
+    def __init__(self):
         super().__init__()
-        
-        self.theme_manager = theme_manager or ThemeManager()
         self.agent_widgets: Dict[str, AgentStatusWidget] = {}
-        
-        self.setup_ui()
-    
-    def setup_ui(self):
-        """Setup the dashboard UI."""
+        self._setup_ui()
+
+    def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
-        
-        # Title
+        layout.setSpacing(12)
+        layout.setContentsMargins(0, 0, 0, 0)
+
         title_label = QLabel("AI Agents Status")
-        title_label.setObjectName("title")
-        title_label.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
+        title_label.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {Color.TEXT_PRIMARY};")
         layout.addWidget(title_label)
-        
-        # Agents grid container
+
         self.agents_container = QWidget()
         self.agents_layout = QVBoxLayout(self.agents_container)
-        self.agents_layout.setSpacing(10)
+        self.agents_layout.setSpacing(8)
         self.agents_layout.setContentsMargins(0, 0, 0, 0)
-        
         layout.addWidget(self.agents_container)
-        
-        # Summary section
+
         summary_frame = QFrame()
-        summary_frame.setFrameShape(QFrame.StyledPanel)
+        summary_frame.setObjectName("summaryBar")
+        summary_frame.setStyleSheet(f"""
+            QFrame#summaryBar {{
+                background-color: {Color.BG_MEDIUM};
+                border: 1px solid {Color.BORDER};
+                border-radius: 8px;
+                padding: 12px 16px;
+            }}
+        """)
         summary_layout = QHBoxLayout(summary_frame)
-        
-        self.total_agents_label = QLabel("Total Agents: 0")
+        summary_layout.setSpacing(24)
+
+        self.total_agents_label = QLabel("Total: 0")
+        self.total_agents_label.setStyleSheet(f"font-size: 12px; color: {Color.TEXT_SECONDARY};")
         summary_layout.addWidget(self.total_agents_label)
-        
-        summary_layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
-        
+
         self.running_label = QLabel("Running: 0")
+        self.running_label.setStyleSheet(f"font-size: 12px; color: {Color.INFO};")
         summary_layout.addWidget(self.running_label)
-        
-        summary_layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
-        
+
         self.completed_label = QLabel("Completed: 0")
+        self.completed_label.setStyleSheet(f"font-size: 12px; color: {Color.SUCCESS};")
         summary_layout.addWidget(self.completed_label)
-        
-        summary_layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
-        
+
         self.error_label = QLabel("Errors: 0")
+        self.error_label.setStyleSheet(f"font-size: 12px; color: {Color.ERROR};")
         summary_layout.addWidget(self.error_label)
-        
+
+        summary_layout.addStretch()
         layout.addWidget(summary_frame)
-    
+
     def add_agent(self, agent_name: str, agent_id: str = "") -> AgentStatusWidget:
-        """Add an agent to the dashboard."""
-        agent_widget = AgentStatusWidget(agent_name, agent_id, self.theme_manager)
+        agent_widget = AgentStatusWidget(agent_name, agent_id)
         self.agent_widgets[agent_name] = agent_widget
         self.agents_layout.addWidget(agent_widget)
-        
-        self.update_summary()
+        self._update_summary()
         return agent_widget
-    
+
     def update_agent_status(self, agent_name: str, status: str, progress: int = 0):
-        """Update status of a specific agent."""
         if agent_name in self.agent_widgets:
             self.agent_widgets[agent_name].set_status(status, progress)
-            self.update_summary()
-    
-    def update_summary(self):
-        """Update the summary statistics."""
+            self._update_summary()
+
+    def _update_summary(self):
         total = len(self.agent_widgets)
         running = sum(1 for w in self.agent_widgets.values() if w.status == "running")
         completed = sum(1 for w in self.agent_widgets.values() if w.status == "completed")
         errors = sum(1 for w in self.agent_widgets.values() if w.status == "error")
-        
-        self.total_agents_label.setText(f"Total Agents: {total}")
+        self.total_agents_label.setText(f"Total: {total}")
         self.running_label.setText(f"Running: {running}")
         self.completed_label.setText(f"Completed: {completed}")
         self.error_label.setText(f"Errors: {errors}")

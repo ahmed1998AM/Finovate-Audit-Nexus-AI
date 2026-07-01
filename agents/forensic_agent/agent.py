@@ -13,11 +13,11 @@ Forensic Accounting Agent
 
 import json
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Set, Tuple
-from dataclasses import dataclass, field
-from enum import Enum
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class ForensicInvestigationResult:
 class ForensicAccountingAgent:
     """
     وكيل التحقيق الجنائي المالي
-    
+
     متخصص في:
     - كشف الفواتير الوهمية
     - تحديد الشركات الوهمية
@@ -73,12 +73,12 @@ class ForensicAccountingAgent:
     - كشف مخططات غسل الأموال
     - تحليل الشبكات المالية المعقدة
     """
-    
+
     def __init__(self, llm_provider: Optional[str] = None):
         self.llm_provider = llm_provider or "default"
         self.name = "Forensic_Accounting_Agent"
         self.version = "1.0.0"
-        
+
         # مؤشرات الاحتيال
         self.fraud_indicators = {
             "round_amount": 0.3,  # مبالغ مستديرة
@@ -90,7 +90,7 @@ class ForensicAccountingAgent:
             "related_parties": 0.7,  # أطراف ذات علاقة
             "cash_heavy": 0.5,  # معاملات نقدية كبيرة
         }
-        
+
         # عتبات الكشف
         self.thresholds = {
             "large_cash_transaction": 50000,  # معاملة نقدية كبيرة
@@ -98,34 +98,34 @@ class ForensicAccountingAgent:
             "vendor_concentration": 0.25,  # تركيز الموردين
             "invoice_sequence_gap": 100,  # فجوة في تسلسل الفواتير
         }
-    
-    def analyze_vendor_payments(self, 
+
+    def analyze_vendor_payments(self,
                                  payments: List[Dict[str, Any]],
                                  vendors: List[Dict[str, Any]]) -> List[SuspiciousTransaction]:
         """
         تحليل مدفوعات الموردين لكشف الفواتير الوهمية
-        
+
         Args:
             payments: قائمة المدفوعات
             vendors: بيانات الموردين
-            
+
         Returns:
             قائمة بالمعاملات المشبوهة
         """
         logger.info("Analyzing vendor payments for fake invoices...")
-        
+
         suspicious = []
-        
+
         # تجميع المدفوعات حسب المورد
         vendor_payments = defaultdict(list)
         for payment in payments:
             vendor_id = payment.get("vendor_id")
             vendor_payments[vendor_id].append(payment)
-        
+
         # تحليل كل مورد
         for vendor_id, vendor_pmts in vendor_payments.items():
             vendor_info = next((v for v in vendors if v.get("id") == vendor_id), {})
-            
+
             # فحص 1: مدفوعات لمورد بدون تفاصيل كافية
             if not vendor_info.get("tax_id") or not vendor_info.get("address"):
                 for pmt in vendor_pmts:
@@ -140,7 +140,7 @@ class ForensicAccountingAgent:
                         evidence=["Vendor lacks basic registration information"],
                         description=f"مدفوعات لمورد بدون معلومات ضريبية أو عنوان: {vendor_info.get('name', 'Unknown')}"
                     ))
-            
+
             # فحص 2: مبالغ مستديرة (دليل على التلاعب)
             round_amount_pmts = [p for p in vendor_pmts if p.get("amount", 0) % 10000 == 0 and p.get("amount", 0) > 50000]
             for pmt in round_amount_pmts:
@@ -155,7 +155,7 @@ class ForensicAccountingAgent:
                     evidence=[f"Amount is perfectly rounded: {pmt.get('amount')}"],
                     description=f"مبلغ مستدير كبير قد يشير إلى فاتورة وهمية: {pmt.get('amount'):,.0f} جنيه"
                 ))
-            
+
             # فحص 3: تكرار غير طبيعي
             if len(vendor_pmts) > 10:
                 dates = [p.get("date", "") for p in vendor_pmts]
@@ -171,30 +171,30 @@ class ForensicAccountingAgent:
                     evidence=[f"{len(vendor_pmts)} payments to single vendor"],
                     description=f"تكرار غير طبيعي للمدفوعات: {len(vendor_pmts)} عملية لنفس المورد"
                 ))
-        
+
         return suspicious
-    
+
     def detect_shell_companies(self,
                                 companies: List[Dict[str, Any]],
                                 transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         كشف الشركات الوهمية
-        
+
         Args:
             companies: بيانات الشركات
             transactions: المعاملات المرتبطة
-            
+
         Returns:
             قائمة بالشركات الوهمية المشتبه بها
         """
         logger.info("Detecting shell companies...")
-        
+
         shell_indicators = []
-        
+
         for company in companies:
             indicators = []
             risk_score = 0.0
-            
+
             # مؤشر 1: شركة حديثة التأسيس مع معاملات كبيرة
             establishment_date = company.get("establishment_date", "")
             if establishment_date:
@@ -204,18 +204,18 @@ class ForensicAccountingAgent:
                     if age_days < 180:  # أقل من 6 أشهر
                         indicators.append("newly_established")
                         risk_score += 0.3
-                except:
+                except ValueError:
                     pass
-            
+
             # مؤشر 2: رأس مال منخفض ومعاملات عالية
             capital = company.get("capital", 0)
             company_txns = [t for t in transactions if t.get("party_id") == company.get("id")]
             total_volume = sum(t.get("amount", 0) for t in company_txns)
-            
+
             if capital > 0 and total_volume > capital * 10:
                 indicators.append("volume_exceeds_capital")
                 risk_score += 0.4
-            
+
             # مؤشر 3: عنوان مشترك مع شركات أخرى
             address = company.get("address", "")
             if address:
@@ -223,18 +223,18 @@ class ForensicAccountingAgent:
                 if len(companies_at_same_address) > 2:
                     indicators.append("shared_address")
                     risk_score += 0.3
-            
+
             # مؤشر 4: نشاط تجاري غير واضح
             if not company.get("business_activity") or company.get("business_activity") == "General Trading":
                 indicators.append("vague_business_activity")
                 risk_score += 0.2
-            
+
             # مؤشر 5: مساهمين مجهولين
             shareholders = company.get("shareholders", [])
             if not shareholders or any(s.get("name") == "Unknown" for s in shareholders):
                 indicators.append("unknown_shareholders")
                 risk_score += 0.3
-            
+
             if risk_score >= 0.5:
                 shell_indicators.append({
                     "company_id": company.get("id"),
@@ -245,38 +245,38 @@ class ForensicAccountingAgent:
                     "capital": capital,
                     "recommendation": "Investigate for potential shell company" if risk_score >= 0.7 else "Monitor closely"
                 })
-        
+
         return sorted(shell_indicators, key=lambda x: x["risk_score"], reverse=True)
-    
+
     def detect_money_laundering(self,
                                  transactions: List[Dict[str, Any]],
                                  accounts: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         كشف عمليات غسل الأموال
-        
+
         Args:
             transactions: قائمة المعاملات
             accounts: الحسابات البنكية
-            
+
         Returns:
             تحليل شامل لغسل الأموال
         """
         logger.info("Detecting money laundering patterns...")
-        
+
         red_flags = []
         suspicious_patterns = []
-        
+
         # نمط 1: Structuring/Smurfing (تقسيم المبالغ الكبيرة)
         account_transactions = defaultdict(list)
         for txn in transactions:
             account_id = txn.get("account_id")
             account_transactions[account_id].append(txn)
-        
+
         for account_id, txns in account_transactions.items():
             # البحث عن معاملات متتالية تحت حد الإبلاغ
             amounts = [t.get("amount", 0) for t in txns]
             large_amounts = [a for a in amounts if 40000 <= a <= 60000]  # حول حد 50,000
-            
+
             if len(large_amounts) >= 3:
                 red_flags.append({
                     "type": "structuring",
@@ -286,7 +286,7 @@ class ForensicAccountingAgent:
                     "severity": "high",
                     "description": "تقسيم محتمل للمبالغ لتجنب حدود الإبلاغ"
                 })
-        
+
         # نمط 2: Round-tripping (إعادة الأموال لدورات)
         # البحث عن معاملات ذهاب وإياب بين نفس الأطراف
         party_pairs = defaultdict(list)
@@ -296,7 +296,7 @@ class ForensicAccountingAgent:
             if from_party and to_party:
                 pair_key = tuple(sorted([from_party, to_party]))
                 party_pairs[pair_key].append(txn)
-        
+
         for pair, txns in party_pairs.items():
             if len(txns) >= 4:  # معاملتان في كل اتجاه على الأقل
                 directions = set()
@@ -305,7 +305,7 @@ class ForensicAccountingAgent:
                         directions.add("A_to_B")
                     else:
                         directions.add("B_to_A")
-                
+
                 if len(directions) == 2:
                     total_amount = sum(t.get("amount", 0) for t in txns)
                     suspicious_patterns.append({
@@ -316,11 +316,11 @@ class ForensicAccountingAgent:
                         "severity": "critical",
                         "description": "تدوير أموال محتمل بين طرفين"
                     })
-        
+
         # نمط 3: معاملات مع دول عالية الخطورة
         high_risk_countries = ["XX", "YY", "ZZ"]  # أمثلة
         international_txns = [t for t in transactions if t.get("country") in high_risk_countries]
-        
+
         if international_txns:
             red_flags.append({
                 "type": "high_risk_jurisdiction",
@@ -329,13 +329,13 @@ class ForensicAccountingAgent:
                 "severity": "high",
                 "description": "معاملات مع دول مصنفة عالية الخطورة"
             })
-        
+
         # نمط 4: إيداعات نقدية كبيرة متتالية
         cash_deposits = [t for t in transactions if t.get("type") == "cash_deposit"]
         if len(cash_deposits) >= 5:
             total_cash = sum(t.get("amount", 0) for t in cash_deposits)
             avg_cash = total_cash / len(cash_deposits)
-            
+
             if avg_cash > self.thresholds["large_cash_transaction"]:
                 red_flags.append({
                     "type": "large_cash_deposits",
@@ -345,7 +345,7 @@ class ForensicAccountingAgent:
                     "severity": "critical",
                     "description": "سلسلة إيداعات نقدية كبيرة"
                 })
-        
+
         return {
             "analysis_date": datetime.now().isoformat(),
             "total_transactions_analyzed": len(transactions),
@@ -355,42 +355,35 @@ class ForensicAccountingAgent:
             "suspicious_patterns": suspicious_patterns,
             "overall_risk_level": "critical" if len(suspicious_patterns) > 0 else ("high" if len(red_flags) > 2 else "medium")
         }
-    
+
     def trace_money_flow(self,
                           source_account: str,
                           transactions: List[Dict[str, Any]],
                           max_depth: int = 5) -> Dict[str, Any]:
         """
         تتبع تدفق الأموال من حساب مصدر
-        
+
         Args:
             source_account: الحساب المصدر
             transactions: جميع المعاملات
             max_depth: أقصى عمق للتتبع
-            
+
         Returns:
             خريطة تدفق الأموال
         """
         logger.info(f"Tracing money flow from account: {source_account}")
-        
-        flow_tree = {
-            "account": source_account,
-            "outflows": [],
-            "total_outflow": 0,
-            "depth": 0
-        }
-        
+
         visited = set()
-        
+
         def trace_recursive(account: str, depth: int) -> Dict:
             if depth > max_depth or account in visited:
                 return {"account": account, "depth": depth, "terminal": True}
-            
+
             visited.add(account)
-            
+
             # العثور على المعاملات الخارجة من هذا الحساب
             outflows = [t for t in transactions if t.get("from_account") == account]
-            
+
             node = {
                 "account": account,
                 "depth": depth,
@@ -398,7 +391,7 @@ class ForensicAccountingAgent:
                 "total_outflow": sum(t.get("amount", 0) for t in outflows),
                 "terminal": False
             }
-            
+
             for txn in outflows[:10]:  # الحد الأقصى 10 معاملات
                 to_account = txn.get("to_account")
                 if to_account:
@@ -407,11 +400,11 @@ class ForensicAccountingAgent:
                     child_node["amount"] = txn.get("amount", 0)
                     child_node["date"] = txn.get("date")
                     node["outflows"].append(child_node)
-            
+
             return node
-        
+
         result = trace_recursive(source_account, 0)
-        
+
         return {
             "source_account": source_account,
             "trace_date": datetime.now().isoformat(),
@@ -424,7 +417,7 @@ class ForensicAccountingAgent:
                 "Check for circular flows"
             ] if len(visited) > 3 else []
         }
-    
+
     def generate_forensic_report(self,
                                   payments: List[Dict[str, Any]],
                                   vendors: List[Dict[str, Any]],
@@ -433,24 +426,24 @@ class ForensicAccountingAgent:
                                   accounts: List[Dict[str, Any]]) -> ForensicInvestigationResult:
         """
         إنشاء تقرير تحقيق جنائي شامل
-        
+
         Returns:
             تقرير مفصل بجميع النتائج
         """
         logger.info("Generating comprehensive forensic report...")
-        
+
         # تحليل مدفوعات الموردين
         suspicious_payments = self.analyze_vendor_payments(payments, vendors)
-        
+
         # كشف الشركات الوهمية
         shell_companies = self.detect_shell_companies(companies, transactions)
-        
+
         # كشف غسل الأموال
         ml_analysis = self.detect_money_laundering(transactions, accounts)
-        
+
         # تجميع جميع الأعلام الحمراء
         all_red_flags = []
-        
+
         for sp in suspicious_payments:
             all_red_flags.append({
                 "type": sp.fraud_type.value,
@@ -460,7 +453,7 @@ class ForensicAccountingAgent:
                 "indicators": sp.indicators,
                 "description": sp.description
             })
-        
+
         for sc in shell_companies:
             all_red_flags.append({
                 "type": "shell_company",
@@ -470,9 +463,9 @@ class ForensicAccountingAgent:
                 "indicators": sc["indicators"],
                 "description": f"شركة وهمية مشتبه بها: {sc['company_name']}"
             })
-        
+
         all_red_flags.extend(ml_analysis.get("red_flags", []))
-        
+
         # بناء شبكات الاحتيال
         fraud_networks = []
         if len(suspicious_payments) > 5:
@@ -480,7 +473,7 @@ class ForensicAccountingAgent:
             for sp in suspicious_payments:
                 for party in sp.parties:
                     vendor_groups[party].append(sp)
-            
+
             for vendor, cases in vendor_groups.items():
                 if len(cases) >= 2:
                     fraud_networks.append({
@@ -490,7 +483,7 @@ class ForensicAccountingAgent:
                         "total_amount": sum(c.amount for c in cases),
                         "severity": "high"
                     })
-        
+
         # إضافة أنماط غسل الأموال كشبكات
         for pattern in ml_analysis.get("suspicious_patterns", []):
             fraud_networks.append({
@@ -500,7 +493,7 @@ class ForensicAccountingAgent:
                 "total_volume": pattern.get("total_volume", 0),
                 "severity": pattern.get("severity", "medium")
             })
-        
+
         # حساب درجة المخاطر الإجمالية
         if all_red_flags:
             avg_risk = sum(rf.get("risk_score", 0.5) for rf in all_red_flags) / len(all_red_flags)
@@ -508,30 +501,30 @@ class ForensicAccountingAgent:
             overall_risk = min(1.0, avg_risk + (critical_count * 0.1))
         else:
             overall_risk = 0.0
-        
+
         # التوصيات
         recommendations = []
-        
+
         if len(suspicious_payments) > 0:
             recommendations.append("مراجعة شاملة لجميع المدفوعات للموردين المشتبه بهم")
             recommendations.append("طلب وثائق داعمة للفواتير المشكوك فيها")
-        
+
         if len(shell_companies) > 0:
             recommendations.append("التحقق من السجلات التجارية للشركات المشتبه بها")
             recommendations.append("فحص العلاقات بين المساهمين والمديرين")
-        
+
         if ml_analysis.get("red_flags"):
             recommendations.append("إعداد تقرير للجهات الرقابية عن المعاملات المشبوهة")
             recommendations.append("تعزيز إجراءات اعرف عميلك (KYC)")
-        
+
         if fraud_networks:
             recommendations.append("إجراء تحقيق موسع في شبكات الاحتيال المكتشفة")
             recommendations.append("التنسيق مع الجهات القانونية للتحقيق الجنائي")
-        
+
         # مستوى الثقة
         confidence = 0.9 - (len(all_red_flags) * 0.02)
         confidence = max(0.5, min(0.95, confidence))
-        
+
         return ForensicInvestigationResult(
             investigation_id=f"FORENSIC_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             investigation_date=datetime.now().isoformat(),
@@ -544,19 +537,19 @@ class ForensicAccountingAgent:
             overall_risk_score=overall_risk,
             confidence_level=confidence
         )
-    
+
     def execute(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         تنفيذ الوكيل على البيانات المقدمة
-        
+
         Args:
             data: بيانات التحقيق
-            
+
         Returns:
             تقرير التحقيق الجنائي
         """
         logger.info(f"Executing {self.name}...")
-        
+
         try:
             result = self.generate_forensic_report(
                 payments=data.get("payments", []),
@@ -565,7 +558,7 @@ class ForensicAccountingAgent:
                 transactions=data.get("transactions", []),
                 accounts=data.get("accounts", [])
             )
-            
+
             # تحويل النتيجة إلى قاموس
             return {
                 "investigation_id": result.investigation_id,
@@ -638,11 +631,11 @@ if __name__ == "__main__":
             {"id": "ACC001", "name": "حساب رئيسي", "type": "current"}
         ]
     }
-    
+
     # تشغيل الوكيل
     agent = ForensicAccountingAgent()
     result = agent.execute(sample_data)
-    
+
     print("=" * 80)
     print("Forensic Accounting Investigation Report")
     print("=" * 80)
