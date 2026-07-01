@@ -1,0 +1,70 @@
+name: Build Desktop Application
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+      - name: Run build script
+        run: python scripts/build_desktop.py
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinovateAuditNexusAI-Linux
+          path: dist/FinovateAuditNexusAI/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+      - name: Run build script
+        run: python scripts/build_desktop.py
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinovateAuditNexusAI-macOS
+          path: dist/FinovateAuditNexusAI/
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install -r requirements-windows.txt
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+      - name: Run build script
+        run: python scripts/build_desktop.py
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinovateAuditNexusAI-Windows
+          path: dist/FinovateAuditNexusAI/
