@@ -52,12 +52,18 @@ def build():
             __import__(pkg)
             print(f"[OK] Found {pkg}")
         except Exception as e:
-            print(f"[WARN] {pkg} check failed ({e}), attempting direct install...")
+            print(f"[WARN] {pkg} check failed ({e}), attempting direct install (binary only)...")
             try:
-                subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+                # Force binary to avoid build issues on Windows
+                subprocess.check_call([sys.executable, "-m", "pip", "install", pkg, "--only-binary", ":all:"])
                 print(f"[OK] {pkg} installed successfully")
             except Exception as e2:
                 print(f"[ERROR] Could not install {pkg}: {e2}")
+                # Try one more time without binary flag just in case
+                try:
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+                except:
+                    pass
 
     # Build using the optimized spec file (supports both onedir/onefile)
     # Use 'python -m PyInstaller' to ensure we use the correct environment
