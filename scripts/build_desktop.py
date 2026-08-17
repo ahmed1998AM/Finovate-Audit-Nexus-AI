@@ -64,7 +64,7 @@ def build():
     # We split packages into categories
     core_pkgs = ["PySide6", "uvicorn", "fastapi", "sqlalchemy", "loguru", "pandas"]
     auth_pkgs = ["jose", "passlib", "bcrypt"]
-    ai_pkgs = ["langchain", "langgraph", "crewai", "openai"]
+    ai_pkgs = ["openai", "anthropic"] # Reduced AI list for 3.9 compatibility
 
     def install_pkg(pkg, force_binary=True):
         try:

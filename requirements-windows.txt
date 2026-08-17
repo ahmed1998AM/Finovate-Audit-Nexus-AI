@@ -20,17 +20,9 @@ python-jose[cryptography]
 passlib[bcrypt]
 bcrypt
 
-# AI & Machine Learning
-langchain
-langgraph
-crewai
+# AI & Machine Learning (Installed dynamically by build script if possible)
 openai
 anthropic
-transformers
-torch
-# Torch and AI libs are flexible for stability
-torch
-sentence-transformers
 
 # OCR & Document Processing
 pymupdf==1.23.8
