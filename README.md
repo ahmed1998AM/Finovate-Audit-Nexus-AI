@@ -1,4 +1,4 @@
-# Finovate Audit Nexus AI
+# Finovate Audit Nexus AI 🚀
 
 ## Enterprise AI Financial Audit & Intelligence Platform
 
@@ -212,3 +212,6 @@ Finovate-Audit-Nexus-AI/
 ---
 
 © 2025 Ahmed Mostafa Ibrahim — All Rights Reserved
+
+---
+**ملاحظة للمطور:** لضمان نجاح بناء نسخة ويندوز، يرجى التأكد من تحديث ملف `.github/workflows/build.yml` لاستخدام **Python 3.10** كما هو موضح في تعليمات Manus.
