@@ -47,9 +47,12 @@ def build():
                     line = line.strip()
                     if line and not line.startswith('#'):
                         try:
-                            subprocess.check_call([sys.executable, "-m", "pip", "install", line])
+                            subprocess.check_call([sys.executable, "-m", "pip", "install", line, "--only-binary", ":all:"])
                         except:
-                            print(f"[ERROR] Failed to install {line}")
+                            try:
+                                subprocess.check_call([sys.executable, "-m", "pip", "install", line])
+                            except:
+                                print(f"[ERROR] Failed to install {line}")
         print("[OK] Dependencies process finished")
     except Exception as e:
         print(f"[ERROR] Pip setup failed: {e}")

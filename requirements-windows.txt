@@ -21,13 +21,14 @@ passlib[bcrypt]
 bcrypt
 
 # AI & Machine Learning
-langchain==0.1.0
-langgraph==0.0.28
-crewai==0.30.8
-openai==1.10.0
-anthropic==0.8.1
-transformers==4.37.2
-# Torch is heavy, using flexible versions for build stability
+langchain
+langgraph
+crewai
+openai
+anthropic
+transformers
+torch
+# Torch and AI libs are flexible for stability
 torch
 sentence-transformers
 
