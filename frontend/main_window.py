@@ -29,6 +29,7 @@ from .components.theme_manager import ThemeManager
 from .services.session_manager import get_session
 from frontend.api_client import get_client, reset_client
 from .components.toast import show_toast
+from backend.services.updater import AutoUpdater
 
 
 class MainWindow(QMainWindow):
@@ -57,9 +58,10 @@ class MainWindow(QMainWindow):
         self._setup_menubar()
         self._setup_statusbar()
         self._create_pages()
-        self._connect_signals()
+        self._start_clock()
         self._setup_shortcuts()
         self._start_clock()
+        QTimer.singleShot(5000, self._check_for_updates)
 
     def _load_style(self):
         return f"""
@@ -272,6 +274,34 @@ class MainWindow(QMainWindow):
 
     def _update_clock(self):
         self.clock_label.setText(QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss"))
+
+    def _check_for_updates(self):
+        """فحص التحديثات في الخلفية"""
+        import asyncio
+        from PySide6.QtCore import QThread, Signal
+
+        class UpdateThread(QThread):
+            update_found = Signal(dict)
+            
+            def run(self):
+                updater = AutoUpdater()
+                # Use a new event loop for the thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                result = loop.run_until_complete(updater.check_for_updates())
+                if result.get("update_available"):
+                    self.update_found.emit(result)
+
+        self.update_thread = UpdateThread()
+        self.update_thread.update_found.connect(self._on_update_found)
+        self.update_thread.start()
+
+    def _on_update_found(self, update_info):
+        msg = f"إصدار جديد متاح: {update_info['latest_version']}\n\nهل تريد الانتقال لصفحة التحميل؟"
+        reply = QMessageBox.question(self, "تحديث متاح", msg, QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            import webbrowser
+            webbrowser.open(update_info['download_url'])
 
     def _new_audit(self):
         self._open_data()
