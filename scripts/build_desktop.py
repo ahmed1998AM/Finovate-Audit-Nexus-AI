@@ -25,9 +25,19 @@ def build():
         print("[OK] PyInstaller installed")
 
     # Install dependencies first
-    print("[INFO] Installing dependencies...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "--quiet"])
-    print("[OK] Dependencies installed")
+    print("[INFO] Detecting OS and installing dependencies...")
+    
+    req_file = "requirements.txt"
+    if sys.platform == "win32":
+        req_file = "requirements-windows.txt"
+    
+    print(f"[INFO] Using {req_file} for {sys.platform}")
+    
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", req_file, "--quiet"])
+        print("[OK] Dependencies installed")
+    except subprocess.CalledProcessError as e:
+        print(f"[WARN] Dependency installation had some issues, continuing anyway: {e}")
 
     # Build using the optimized spec file (supports both onedir/onefile)
     spec_file = "finovate_audit.spec"
