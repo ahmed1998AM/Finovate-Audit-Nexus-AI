@@ -39,9 +39,23 @@ def build():
     except subprocess.CalledProcessError as e:
         print(f"[WARN] Dependency installation had some issues, continuing anyway: {e}")
 
+    # Verify critical dependencies before building
+    print("[INFO] Verifying critical dependencies...")
+    try:
+        import PySide6
+        import uvicorn
+        import fastapi
+        print(f"[OK] PySide6 version: {PySide6.__version__}")
+        print(f"[OK] Uvicorn/FastAPI found")
+    except ImportError as e:
+        print(f"[ERROR] Critical dependency missing in build environment: {e}")
+        print("[INFO] Attempting one last direct install...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "PySide6", "uvicorn", "fastapi"])
+
     # Build using the optimized spec file (supports both onedir/onefile)
+    # Use 'python -m PyInstaller' to ensure we use the correct environment
     spec_file = "finovate_audit.spec"
-    cmd = ["pyinstaller", "--clean", "--noconfirm", spec_file]
+    cmd = [sys.executable, "-m", "PyInstaller", "--clean", "--noconfirm", spec_file]
     
     print(f"[BUILD] {' '.join(cmd)}")
     print()

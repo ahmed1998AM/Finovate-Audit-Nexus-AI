@@ -1,7 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
+import os
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 block_cipher = None
+
+# إضافة مسارات بايثون الحالية لضمان عثور PyInstaller على المكتبات المثبتة
+for path in sys.path:
+    if "site-packages" in path:
+        print(f"Adding to search path: {path}")
 
 # إجبار النظام على جمع كافة التبعيات بشكل شامل
 hidden_imports = [
