@@ -35,21 +35,29 @@ def build():
     
     try:
         print(f"[INFO] Installing all dependencies from {req_file}...")
+        # Upgrade pip first
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
+        # Install requirements without --quiet to see errors
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", req_file])
         print("[OK] Dependencies installed")
     except subprocess.CalledProcessError as e:
-        print(f"[WARN] Dependency installation had some issues: {e}")
+        print(f"[ERROR] Dependency installation failed: {e}")
+        # We continue to see if we can still build or what exactly is missing
 
     # Verify critical dependencies before building
     print("[INFO] Verifying critical dependencies...")
-    critical_pkgs = ["PySide6", "uvicorn", "fastapi", "sqlalchemy", "loguru", "pandas"]
+    critical_pkgs = ["PySide6", "uvicorn", "fastapi", "sqlalchemy", "loguru", "pandas", "jose", "passlib", "bcrypt"]
     for pkg in critical_pkgs:
         try:
             __import__(pkg)
             print(f"[OK] Found {pkg}")
-        except ImportError:
-            print(f"[WARN] {pkg} not found, attempting direct install...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+        except Exception as e:
+            print(f"[WARN] {pkg} check failed ({e}), attempting direct install...")
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+                print(f"[OK] {pkg} installed successfully")
+            except Exception as e2:
+                print(f"[ERROR] Could not install {pkg}: {e2}")
 
     # Build using the optimized spec file (supports both onedir/onefile)
     # Use 'python -m PyInstaller' to ensure we use the correct environment
