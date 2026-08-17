@@ -34,23 +34,22 @@ def build():
     print(f"[INFO] Using {req_file} for {sys.platform}")
     
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", req_file, "--quiet"])
+        print(f"[INFO] Installing all dependencies from {req_file}...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", req_file])
         print("[OK] Dependencies installed")
     except subprocess.CalledProcessError as e:
-        print(f"[WARN] Dependency installation had some issues, continuing anyway: {e}")
+        print(f"[WARN] Dependency installation had some issues: {e}")
 
     # Verify critical dependencies before building
     print("[INFO] Verifying critical dependencies...")
-    try:
-        import PySide6
-        import uvicorn
-        import fastapi
-        print(f"[OK] PySide6 version: {PySide6.__version__}")
-        print(f"[OK] Uvicorn/FastAPI found")
-    except ImportError as e:
-        print(f"[ERROR] Critical dependency missing in build environment: {e}")
-        print("[INFO] Attempting one last direct install...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "PySide6", "uvicorn", "fastapi"])
+    critical_pkgs = ["PySide6", "uvicorn", "fastapi", "sqlalchemy", "loguru", "pandas"]
+    for pkg in critical_pkgs:
+        try:
+            __import__(pkg)
+            print(f"[OK] Found {pkg}")
+        except ImportError:
+            print(f"[WARN] {pkg} not found, attempting direct install...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
 
     # Build using the optimized spec file (supports both onedir/onefile)
     # Use 'python -m PyInstaller' to ensure we use the correct environment
