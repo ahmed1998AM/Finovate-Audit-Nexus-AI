@@ -160,7 +160,8 @@ class TestAgentMethods:
         # Verify method exists
         assert hasattr(agent, 'orchestrate_audit') or hasattr(agent, 'execute')
         
-    def test_fraud_agent_detect(self):
+    @pytest.mark.asyncio
+    async def test_fraud_agent_detect(self):
         """Test Fraud Agent detection method with real data."""
         from agents.fraud_agent.agent import FraudDetectionAgent
         import pandas as pd
@@ -173,11 +174,12 @@ class TestAgentMethods:
             {'id': 3, 'amount': 150000, 'vendor': 'Vendor B', 'date': '2024-01-17'},
         ])
         
-        result = agent.detect_fraud(sample_transactions)
+        result = await agent.detect_fraud(sample_transactions)
         assert result is not None
         assert isinstance(result, dict)
         
-    def test_risk_agent_score(self):
+    @pytest.mark.asyncio
+    async def test_risk_agent_score(self):
         """Test Risk Agent scoring method with real data."""
         from agents.risk_agent.agent import RiskScoringAgent
         import pandas as pd
@@ -189,7 +191,7 @@ class TestAgentMethods:
             {'account': 'Receivables', 'amount': 50000, 'risk_factor': 0.3},
         ])
         
-        result = agent.assess_risks(sample_data)
+        result = await agent.assess_risks(sample_data)
         assert result is not None
         assert isinstance(result, dict)
         

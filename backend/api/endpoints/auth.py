@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 
-import jwt
+from jose import jwt, JWTError
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr
@@ -106,7 +106,7 @@ async def get_current_user_endpoint(
         username = payload.get("sub")
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
-    except jwt.PyJWTError:
+    except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     user = db.query(UserModel).filter(
         UserModel.username == username, UserModel.is_active.is_(True)
@@ -135,7 +135,7 @@ async def change_password(
         payload = jwt.decode(credentials.credentials, _get_jwt_secret(), algorithms=["HS256"],
                              options={"verify_exp": True, "require": ["exp"]})
         username = payload.get("sub")
-    except jwt.PyJWTError:
+    except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     user = db.query(UserModel).filter(UserModel.username == username, UserModel.is_active.is_(True)).first()
     if not user:
@@ -169,7 +169,7 @@ async def logout(
             if user:
                 user.last_login = None
                 db.commit()
-    except jwt.PyJWTError:
+    except JWTError:
         pass
     return {"success": True, "message": "Logged out successfully"}
 
@@ -200,5 +200,5 @@ async def refresh_token(
                 new_token = create_access_token(data={"sub": username, "role": user.role})
                 return {"access_token": new_token, "token_type": "bearer", "expires_in": 86400}
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Cannot refresh expired token")
-    except jwt.PyJWTError:
+    except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")

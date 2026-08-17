@@ -2,7 +2,7 @@
 Finovate Audit Nexus AI - Auth Middleware
 مصادقة موحدة لجميع نقاط API
 """
-import jwt
+from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
@@ -23,7 +23,7 @@ async def get_optional_user(
         payload = jwt.decode(credentials.credentials, _get_jwt_secret(), algorithms=["HS256"],
                              options={"verify_exp": True, "require": ["exp"]})
         username = payload.get("sub")
-    except jwt.PyJWTError:
+    except JWTError:
         return None
     user = db.query(UserModel).filter(
         UserModel.username == username, UserModel.is_active.is_(True)
@@ -42,7 +42,7 @@ async def get_current_user(
         username = payload.get("sub")
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
-    except jwt.PyJWTError:
+    except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     user = db.query(UserModel).filter(
         UserModel.username == username, UserModel.is_active.is_(True)

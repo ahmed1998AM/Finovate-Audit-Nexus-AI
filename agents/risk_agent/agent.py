@@ -356,16 +356,38 @@ class RiskScoringAgent:
         else:
             return RiskLevel.LOW.value
 
-    async def assess_risks(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def assess_risks(self, data: Any) -> Dict[str, Any]:
         """
         Orchestrate the risk assessment process
 
         Args:
-            data: Combined financial data and core agent results
+            data: Combined financial data and core agent results or DataFrame
 
         Returns:
             Comprehensive risk assessment results
         """
+        # Handle DataFrame input
+        if hasattr(data, 'to_dict') and not isinstance(data, dict):
+            try:
+                records = data.to_dict(orient='records')
+                new_data = {'transactions': records}
+                if hasattr(data, 'columns'):
+                    for col in ['current_ratio', 'working_capital', 'debt_to_assets', 'profit_margin', 'debt_to_equity']:
+                        if col in data.columns and len(data) > 0:
+                            new_data[col] = data[col].iloc[0]
+                data = new_data
+            except:
+                data = {'transactions': []}
+        
+        # Ensure it's a dict
+        if not isinstance(data, dict):
+            data = {'transactions': []}
+
+        # Ensure default values for required keys
+        if 'current_ratio' not in data: data['current_ratio'] = 1.0
+        if 'debt_to_assets' not in data: data['debt_to_assets'] = 0.0
+        if 'profit_margin' not in data: data['profit_margin'] = 0.0
+
         # Calculate scores for each category
         financial_score = self.calculate_financial_risk(data)
 

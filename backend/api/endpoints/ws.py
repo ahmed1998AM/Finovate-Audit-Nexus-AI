@@ -3,7 +3,7 @@ Finovate Audit Nexus AI - WebSocket Endpoint
 نقطة اتصال WebSocket للاتصال المباشر
 """
 
-import jwt
+from jose import jwt, JWTError
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 
 from backend.api.endpoints.auth import _get_jwt_secret

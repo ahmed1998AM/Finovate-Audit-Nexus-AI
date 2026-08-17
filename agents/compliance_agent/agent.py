@@ -115,8 +115,29 @@ class ComplianceStandardsAgent:
         """Alias for analyze_compliance for orchestrator compatibility"""
         return self.analyze_compliance(financial_data)
 
-    def analyze_compliance(self, financial_data: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze_compliance(self, financial_data: Any) -> Dict[str, Any]:
         """تحليل الالتزام بالمعايير"""
+        # تحويل DataFrame إلى dict إذا لزم الأمر
+        if hasattr(financial_data, 'to_dict') and not isinstance(financial_data, dict):
+            try:
+                # Convert to list of dicts
+                records = financial_data.to_dict(orient='records')
+                # Create a dict structure the agent expects
+                new_data = {'transactions': records}
+                
+                # Try to extract metrics if they are columns
+                if hasattr(financial_data, 'columns'):
+                    for col in ['current_ratio', 'working_capital', 'debt_to_assets', 'profit_margin']:
+                        if col in financial_data.columns and len(financial_data) > 0:
+                            new_data[col] = financial_data[col].iloc[0]
+                
+                financial_data = new_data
+            except:
+                financial_data = {'transactions': []}
+        
+        # Ensure it's a dict
+        if not isinstance(financial_data, dict):
+            financial_data = {'transactions': []}
 
         report = {
             'agent': self.agent_name,

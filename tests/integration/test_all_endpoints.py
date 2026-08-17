@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, PropertyMock, patch, ANY
 import asyncio
 import httpx
 from httpx import ASGITransport
-import jwt
+from jose import jwt, JWTError
 import pytest
 from fastapi import APIRouter, Depends, FastAPI
 

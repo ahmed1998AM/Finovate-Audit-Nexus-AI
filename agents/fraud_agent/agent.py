@@ -45,18 +45,44 @@ class FraudDetectionAgent:
         """Alias for analyze method for orchestrator compatibility"""
         return await self.analyze(financial_data)
 
-    async def analyze(self, financial_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def analyze(self, financial_data: Any) -> Dict[str, Any]:
         """
         Perform comprehensive fraud analysis
 
         Args:
-            financial_data: Dictionary containing financial transactions and data
+            financial_data: Dictionary or DataFrame containing financial transactions and data
 
         Returns:
             Fraud analysis results with indicators and risk scores
         """
         logger.info("Starting fraud detection analysis...")
         self.status = "analyzing"
+
+        # Handle DataFrame input
+        if hasattr(financial_data, 'to_dict'):
+            try:
+                if hasattr(financial_data, 'head'):
+                    df = financial_data
+                    # Map common column names to what the agent expects
+                    mapping = {
+                        'amount': 'amount',
+                        'date': 'date',
+                        'vendor': 'vendor_name',
+                        'payee': 'payee',
+                        'description': 'description'
+                    }
+                    df = df.rename(columns={c: mapping[c] for c in df.columns if c in mapping})
+                    
+                    # Convert to list of dicts and put in journal_entries or bank_transactions
+                    records = df.to_dict(orient='records')
+                    financial_data = {
+                        'journal_entries': records,
+                        'bank_transactions': records,
+                        'vendor_payments': records,
+                        'employee_expenses': records
+                    }
+            except Exception as e:
+                logger.warning(f"Failed to convert DataFrame in Fraud Agent: {e}")
 
         try:
             findings = {

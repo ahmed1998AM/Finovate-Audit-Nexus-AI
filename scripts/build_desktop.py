@@ -41,7 +41,7 @@ def build():
         print()
         print("=" * 60)
         print("[SUCCESS] Build Complete!")
-        print(f"[OUTPUT] dist/FinovateAuditNexusAI/")
+        print(f"[OUTPUT] dist/FinovateAudit/")
         print("=" * 60)
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] Build Failed: {e}")
