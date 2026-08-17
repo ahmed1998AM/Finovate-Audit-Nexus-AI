@@ -9,12 +9,34 @@ Brand: Finovate – AHMED EG
 """
 import sys
 import os
+import multiprocessing
+import logging
+from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# إعداد نظام تسجيل الأخطاء في ملف خارجي للتشخيص
+log_dir = os.path.join(os.path.expanduser("~"), ".finovate_audit")
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, "app_debug.log")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file, encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("Main")
+
 def main():
     """النقطة الرئيسية لتشغيل التطبيق"""
+    # ضروري جداً لعمل PyInstaller على ويندوز عند استخدام multiprocessing
+    multiprocessing.freeze_support()
+    
+    logger.info("Application Starting...")
     print("=" * 60)
     print("[START] Finovate Audit Nexus AI")
     print("   Enterprise AI Financial Audit & Intelligence Platform")
@@ -51,25 +73,33 @@ def main():
             print("Use --help to see available commands.")
             sys.exit(1)
     else:
-        # Default: Start desktop application
-        start_desktop_app()
+        # Default: Start everything (API + Desktop) for full functionality
+        start_all()
 
 def start_all():
     """تشغيل الخادم وتطبيق سطح المكتب معاً"""
     import multiprocessing
     import time
+    import threading
 
-    print("[ALL] Starting API server + Desktop...")
-    api_process = multiprocessing.Process(target=_run_api_subprocess, daemon=True)
-    api_process.start()
-    print("[OK] API server starting on http://localhost:8000")
-    time.sleep(2)
+    logger.info("Starting API server + Desktop...")
+    
+    # في بيئة PyInstaller، يفضل تشغيل الـ API في خيط (Thread) منفصل أو عملية مستقلة بحذر
+    def run_api():
+        try:
+            import uvicorn
+            from backend.main import app as fastapi_app
+            logger.info("Starting Uvicorn server...")
+            uvicorn.run(fastapi_app, host="127.0.0.1", port=8000, log_level="info")
+        except Exception as e:
+            logger.error(f"API Server failed: {e}")
+
+    api_thread = threading.Thread(target=run_api, daemon=True)
+    api_thread.start()
+    
+    logger.info("API server thread started on http://127.0.0.1:8000")
+    time.sleep(1)
     start_desktop_app()
-
-
-def _run_api_subprocess():
-    import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=False)
 
 
 def start_api_server():
@@ -89,14 +119,15 @@ def start_api_server():
 
 def start_desktop_app():
     """تشغيل تطبيق سطح المكتب"""
-    print("[DESKTOP] Starting PySide6 Desktop Application...")
+    logger.info("Starting PySide6 Desktop Application...")
     try:
         from frontend.main_window import MainWindow
         from frontend.components.login_dialog import LoginDialog
-        from PySide6.QtWidgets import QApplication
+        from PySide6.QtWidgets import QApplication, QMessageBox
         import traceback
 
         app = QApplication(sys.argv)
+        app.setApplicationName("Finovate Audit Nexus AI")
         app.setQuitOnLastWindowClosed(False)
 
         user_info = {"username": "admin", "role": "Admin", "source": "local"}
@@ -125,16 +156,18 @@ def start_desktop_app():
             window.logout_requested.connect(_on_logout)
 
             sys.exit(app.exec())
-        except Exception:
-            print("[ERROR] MainWindow creation failed:")
-            traceback.print_exc()
+        except Exception as e:
+            error_msg = f"MainWindow creation failed: {str(e)}\n{traceback.format_exc()}"
+            logger.error(error_msg)
+            QMessageBox.critical(None, "Fatal Error", f"فشل تشغيل الواجهة الرئيسية:\n{str(e)}")
             sys.exit(1)
     except ImportError as e:
-        print(f"[ERROR] Missing dependency: {e}")
-        print("   Please install requirements: pip install -r requirements.txt")
+        logger.error(f"Missing dependency: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"[ERROR] Failed to start desktop app: {e}")
+        logger.error(f"Failed to start desktop app: {e}")
+        if 'app' in locals():
+            QMessageBox.critical(None, "Startup Error", f"خطأ في بداية التشغيل:\n{str(e)}")
         sys.exit(1)
 
 def run_tests():
