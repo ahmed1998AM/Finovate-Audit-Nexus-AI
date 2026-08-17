@@ -35,14 +35,24 @@ def build():
     
     try:
         print(f"[INFO] Installing all dependencies from {req_file}...")
-        # Upgrade pip first
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
-        # Install requirements without --quiet to see errors
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", req_file])
-        print("[OK] Dependencies installed")
-    except subprocess.CalledProcessError as e:
-        print(f"[ERROR] Dependency installation failed: {e}")
-        # We continue to see if we can still build or what exactly is missing
+        
+        # Try installing one by one if bulk fails
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", req_file])
+        except:
+            print("[WARN] Bulk install failed, trying individual installs...")
+            with open(req_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        try:
+                            subprocess.check_call([sys.executable, "-m", "pip", "install", line])
+                        except:
+                            print(f"[ERROR] Failed to install {line}")
+        print("[OK] Dependencies process finished")
+    except Exception as e:
+        print(f"[ERROR] Pip setup failed: {e}")
 
     # Verify critical dependencies before building
     print("[INFO] Verifying critical dependencies...")
