@@ -1,51 +1,52 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 block_cipher = None
+
+# إجبار النظام على جمع كافة التبعيات بشكل شامل
+hidden_imports = [
+    'uvicorn.logging',
+    'uvicorn.loops',
+    'uvicorn.lifespan',
+    'uvicorn.protocols',
+    'uvicorn.protocols.http',
+    'uvicorn.protocols.http.h11_impl',
+    'uvicorn.protocols.http.httptools_impl',
+    'uvicorn.protocols.websockets',
+    'uvicorn.protocols.websockets.websockets_impl',
+    'uvicorn.protocols.websockets.wsproto_impl',
+    'email_validator',
+    'pydantic_settings',
+    'passlib.handlers.bcrypt',
+    'jose',
+    'backend.services.updater',
+    'version',
+]
+
+# إضافة كافة الموديلات الفرعية لضمان عدم نسيان أي ملف
+hidden_imports += collect_submodules('PySide6')
+hidden_imports += collect_submodules('fastapi')
+hidden_imports += collect_submodules('uvicorn')
+hidden_imports += collect_submodules('sqlalchemy')
+
+extra_datas = [
+    ('frontend', 'frontend'),
+    ('database', 'database'),
+    ('agents', 'agents'),
+    ('backend', 'backend'),
+    ('connectors', 'connectors'),
+    ('assets', 'assets'),
+    ('config', 'config'),
+    ('templates', 'templates'),
+]
+extra_datas += collect_data_files('PySide6')
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        ('frontend', 'frontend'),
-        ('database', 'database'),
-        ('agents', 'agents'),
-        ('backend', 'backend'),
-        ('connectors', 'connectors'),
-        ('assets', 'assets'),
-        ('config', 'config'),
-        ('templates', 'templates'),
-    ],
-    hiddenimports=[
-        'PySide6',
-        'PySide6.QtCore',
-        'PySide6.QtGui',
-        'PySide6.QtWidgets',
-        'PySide6.QtNetwork',
-        'PySide6.QtPrintSupport',
-        'PySide6.QtWebEngineWidgets',
-        'PySide6.QtWebEngineCore',
-        'PySide6.QtWebChannel',
-        'tinydb',
-        'pandas',
-        'numpy',
-        'matplotlib',
-        'uvicorn',
-        'uvicorn.protocols.http.httptools_impl',
-        'uvicorn.protocols.http.h11_impl',
-        'uvicorn.protocols.websockets.wsproto_impl',
-        'uvicorn.protocols.websockets.websockets_impl',
-        'uvicorn.lifespan.on',
-        'fastapi',
-        'sqlalchemy',
-        'alembic',
-        'pydantic_settings',
-        'email_validator',
-        'jose',
-        'passlib.handlers.bcrypt',
-        'backend.services.updater',
-        'version',
-    ],
+    datas=extra_datas,
+    hiddenimports=hidden_imports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

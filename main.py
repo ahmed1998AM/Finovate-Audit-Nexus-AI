@@ -87,12 +87,15 @@ def start_all():
     # في بيئة PyInstaller، يفضل تشغيل الـ API في خيط (Thread) منفصل أو عملية مستقلة بحذر
     def run_api():
         try:
+            # استيراد مباشر لضمان وجود الموديلات في النطاق
             import uvicorn
-            from backend.main import app as fastapi_app
+            import backend.main
             logger.info("Starting Uvicorn server...")
-            uvicorn.run(fastapi_app, host="127.0.0.1", port=8000, log_level="info")
+            uvicorn.run(backend.main.app, host="127.0.0.1", port=8000, log_level="info")
         except Exception as e:
             logger.error(f"API Server failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
 
     api_thread = threading.Thread(target=run_api, daemon=True)
     api_thread.start()
@@ -121,35 +124,35 @@ def start_desktop_app():
     """تشغيل تطبيق سطح المكتب"""
     logger.info("Starting PySide6 Desktop Application...")
     try:
-        from frontend.main_window import MainWindow
-        from frontend.components.login_dialog import LoginDialog
-        from PySide6.QtWidgets import QApplication, QMessageBox
-        import traceback
-
-        app = QApplication(sys.argv)
+        # استيرادات صريحة لتجنب فشل PyInstaller
+        import PySide6.QtWidgets
+        import frontend.main_window
+        import frontend.components.login_dialog
+        
+        app = PySide6.QtWidgets.QApplication(sys.argv)
         app.setApplicationName("Finovate Audit Nexus AI")
         app.setQuitOnLastWindowClosed(False)
 
         user_info = {"username": "admin", "role": "Admin", "source": "local"}
         try:
-            login = LoginDialog()
-            if login.exec() == LoginDialog.Accepted:
+            login = frontend.components.login_dialog.LoginDialog()
+            if login.exec() == frontend.components.login_dialog.LoginDialog.Accepted:
                 user_info = login.user_info
         except Exception as e:
-            print(f"[WARN] Login dialog failed ({e}), using defaults")
+            logger.warning(f"Login dialog failed ({e}), using defaults")
 
         try:
-            window = MainWindow(user_info=user_info)
+            window = frontend.main_window.MainWindow(user_info=user_info)
             window.show()
             app.setQuitOnLastWindowClosed(True)
-            print("[OK] Application running")
+            logger.info("Application main window showing")
 
             def _on_logout():
                 window.close()
                 app.setQuitOnLastWindowClosed(False)
-                login = LoginDialog()
-                if login.exec() == LoginDialog.Accepted:
-                    new_win = MainWindow(user_info=login.user_info)
+                login = frontend.components.login_dialog.LoginDialog()
+                if login.exec() == frontend.components.login_dialog.LoginDialog.Accepted:
+                    new_win = frontend.main_window.MainWindow(user_info=login.user_info)
                     new_win.show()
                     app.setQuitOnLastWindowClosed(True)
 
