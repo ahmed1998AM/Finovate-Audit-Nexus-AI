@@ -9,6 +9,8 @@ import sys
 def build():
     print("=" * 60)
     print("Finovate Audit Nexus AI - Desktop Build")
+    print(f"Python Version: {sys.version}")
+    print(f"Platform: {sys.platform}")
     print("=" * 60)
     
     # Ensure we are in project root
@@ -59,24 +61,39 @@ def build():
 
     # Verify critical dependencies before building
     print("[INFO] Verifying critical dependencies...")
-    critical_pkgs = ["PySide6", "uvicorn", "fastapi", "sqlalchemy", "loguru", "pandas", "jose", "passlib", "bcrypt"]
-    for pkg in critical_pkgs:
+    # We split packages into categories
+    core_pkgs = ["PySide6", "uvicorn", "fastapi", "sqlalchemy", "loguru", "pandas"]
+    auth_pkgs = ["jose", "passlib", "bcrypt"]
+    ai_pkgs = ["langchain", "langgraph", "crewai", "openai"]
+
+    def install_pkg(pkg, force_binary=True):
         try:
-            __import__(pkg)
-            print(f"[OK] Found {pkg}")
-        except Exception as e:
-            print(f"[WARN] {pkg} check failed ({e}), attempting direct install (binary only)...")
+            # Map import name to pip name if different
+            pip_name = pkg
+            if pkg == "jose": pip_name = "python-jose[cryptography]"
+            if pkg == "passlib": pip_name = "passlib[bcrypt]"
+            
+            print(f"[INFO] Checking {pkg}...")
+            __import__(pkg.split('[')[0])
+            print(f"[OK] {pkg} is ready")
+        except Exception:
+            print(f"[WARN] {pkg} missing, installing...")
             try:
-                # Force binary to avoid build issues on Windows
-                subprocess.check_call([sys.executable, "-m", "pip", "install", pkg, "--only-binary", ":all:"])
-                print(f"[OK] {pkg} installed successfully")
-            except Exception as e2:
-                print(f"[ERROR] Could not install {pkg}: {e2}")
-                # Try one more time without binary flag just in case
-                try:
-                    subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
-                except:
-                    pass
+                args = [sys.executable, "-m", "pip", "install", pip_name]
+                if force_binary: args.append("--only-binary=:all:")
+                subprocess.check_call(args)
+                print(f"[OK] {pkg} installed")
+            except:
+                print(f"[ERROR] Failed to install {pkg}")
+
+    print("[INFO] Installing Core Packages...")
+    for p in core_pkgs: install_pkg(p)
+    
+    print("[INFO] Installing Auth Packages...")
+    for p in auth_pkgs: install_pkg(p)
+    
+    print("[INFO] Installing AI Packages (Optional for build stability)...")
+    for p in ai_pkgs: install_pkg(p, force_binary=False)
 
     # Build using the optimized spec file (supports both onedir/onefile)
     # Use 'python -m PyInstaller' to ensure we use the correct environment
