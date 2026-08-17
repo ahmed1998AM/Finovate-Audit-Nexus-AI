@@ -38,39 +38,39 @@ class LoginDialog(QDialog):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(40, 30, 40, 30)
-        layout.setSpacing(16)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(20)
         layout.addStretch(1)
 
         title_frame = QFrame()
         title_frame.setObjectName("loginTitleFrame")
         title_frame.setStyleSheet(f"""
             QFrame#loginTitleFrame {{
-                background-color: {Color.BG_MEDIUM};
-                border-radius: 12px;
-                padding: 20px;
+                background-color: {Color.BG_SIDEBAR};
+                border-radius: 16px;
+                padding: 30px;
                 border: 1px solid {Color.BORDER};
             }}
         """)
         title_layout = QVBoxLayout(title_frame)
         title_layout.setAlignment(Qt.AlignCenter)
-        title_layout.setSpacing(4)
+        title_layout.setSpacing(8)
 
         title = QLabel("Finovate Audit")
         title.setAlignment(Qt.AlignCenter)
-        title.setFont(Typography.font("h2", bold=True))
-        title.setStyleSheet(f"color: {Color.TEXT_WHITE}; background: transparent;")
+        title.setFont(Typography.font("h1", bold=True))
+        title.setStyleSheet(f"color: {Color.PRIMARY_LIGHT}; background: transparent; letter-spacing: 1px;")
         title_layout.addWidget(title)
 
         subtitle = QLabel("Nexus AI")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setFont(Typography.font("h3", bold=True))
-        subtitle.setStyleSheet(f"color: {Color.PRIMARY}; background: transparent;")
+        subtitle.setFont(Typography.font("h2", bold=True))
+        subtitle.setStyleSheet(f"color: {Color.TEXT_WHITE}; background: transparent;")
         title_layout.addWidget(subtitle)
 
-        tagline = QLabel("Enterprise Financial Audit Platform")
+        tagline = QLabel("Enterprise Financial Intelligence")
         tagline.setAlignment(Qt.AlignCenter)
-        tagline.setStyleSheet(f"color: {Color.TEXT_SECONDARY}; font-size: 11px; background: transparent;")
+        tagline.setStyleSheet(f"color: {Color.TEXT_MUTED}; font-size: 12px; font-weight: 500; background: transparent;")
         title_layout.addWidget(tagline)
 
         layout.addWidget(title_frame)

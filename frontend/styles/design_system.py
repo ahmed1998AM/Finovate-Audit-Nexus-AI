@@ -7,49 +7,52 @@ from PySide6.QtGui import QColor, QFont
 
 
 class Color:
-    # Primary palette
-    PRIMARY = "#00d4aa"
-    PRIMARY_HOVER = "#00b894"
-    PRIMARY_DARK = "#009975"
+    # Modern Enterprise Palette
+    PRIMARY = "#3b82f6"       # Royal Blue
+    PRIMARY_HOVER = "#2563eb"
+    PRIMARY_DARK = "#1d4ed8"
+    PRIMARY_LIGHT = "#60a5fa"
 
-    # Background
-    BG_DARK = "#0f1923"
-    BG_MEDIUM = "#1a2a3a"
-    BG_LIGHT = "#243447"
-    BG_CARD = "#1e2d3d"
+    # Backgrounds
+    BG_DARK = "#0f172a"       # Slate 900
+    BG_SIDEBAR = "#1e293b"    # Slate 800
+    BG_MAIN = "#0f172a"
+    BG_CARD = "#1e293b"
+    BG_HOVER = "#334155"      # Slate 700
 
     # Text
-    TEXT_PRIMARY = "#e0e0e0"
-    TEXT_SECONDARY = "#8899aa"
-    TEXT_MUTED = "#556677"
+    TEXT_PRIMARY = "#f8fafc"  # Slate 50
+    TEXT_SECONDARY = "#94a3b8" # Slate 400
+    TEXT_MUTED = "#64748b"    # Slate 500
     TEXT_WHITE = "#ffffff"
 
     # Status
-    SUCCESS = "#00d4aa"
-    WARNING = "#f0a500"
-    ERROR = "#ff4757"
-    INFO = "#2e86ab"
+    SUCCESS = "#10b981"       # Emerald 500
+    WARNING = "#f59e0b"       # Amber 500
+    ERROR = "#ef4444"         # Red 500
+    INFO = "#0ea5e9"          # Sky 500
 
     # Borders
-    BORDER = "#2a3a4a"
-    BORDER_LIGHT = "#3a4a5a"
+    BORDER = "#334155"        # Slate 700
+    BORDER_LIGHT = "#475569"  # Slate 600
 
-    # Special
-    ACCENT = "#00d4aa"
-    GRADIENT_START = "#0f1923"
-    GRADIENT_END = "#1a2a3a"
+    # Accents & Special
+    ACCENT = "#8b5cf6"        # Violet 500
+    GRADIENT_START = "#1e293b"
+    GRADIENT_END = "#0f172a"
+    SHADOW = "rgba(0, 0, 0, 0.3)"
 
 
 class Typography:
-    FAMILY = "Segoe UI"
+    FAMILY = "Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, Arial"
     SIZES = {
-        "h1": 28,
-        "h2": 22,
-        "h3": 18,
-        "h4": 15,
-        "body": 13,
-        "small": 11,
-        "caption": 9,
+        "h1": 32,
+        "h2": 24,
+        "h3": 20,
+        "h4": 16,
+        "body": 14,
+        "small": 12,
+        "caption": 10,
     }
 
     @staticmethod

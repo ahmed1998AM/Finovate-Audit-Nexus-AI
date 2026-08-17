@@ -35,7 +35,7 @@ class Sidebar(QFrame):
     def _setup_ui(self):
         self.setStyleSheet(f"""
             #sidebar {{
-                background-color: {Color.BG_MEDIUM};
+                background-color: {Color.BG_SIDEBAR};
                 border-right: 1px solid {Color.BORDER};
             }}
             #sidebar QPushButton#navButton {{
@@ -43,18 +43,26 @@ class Sidebar(QFrame):
                 color: {Color.TEXT_SECONDARY};
                 border: none;
                 border-radius: 8px;
-                padding: 10px 14px;
+                padding: 12px 16px;
                 text-align: left;
-                font-size: 13px;
+                font-size: 14px;
                 font-weight: 500;
+                margin: 2px 8px;
             }}
             #sidebar QPushButton#navButton:hover {{
-                background-color: {Color.BG_LIGHT};
+                background-color: {Color.BG_HOVER};
                 color: {Color.TEXT_PRIMARY};
             }}
             #sidebar QScrollArea#navScrollArea {{
                 border: none;
                 background-color: transparent;
+            }}
+            #logoLabel {{
+                color: {Color.PRIMARY_LIGHT};
+                font-size: 18px;
+                font-weight: 800;
+                padding: 20px 10px 5px 10px;
+                letter-spacing: 1px;
             }}
         """)
 
@@ -127,14 +135,14 @@ class Sidebar(QFrame):
             if pid == page_id:
                 btn.setStyleSheet(f"""
                     QPushButton#navButton {{
-                        background-color: {Color.PRIMARY}26;
-                        color: {Color.PRIMARY};
-                        border-left: 3px solid {Color.PRIMARY};
+                        background-color: {Color.PRIMARY};
+                        color: {Color.TEXT_WHITE};
                         border-radius: 8px;
-                        padding: 10px 14px;
+                        padding: 12px 16px;
                         text-align: left;
-                        font-size: 13px;
-                        font-weight: 500;
+                        font-size: 14px;
+                        font-weight: 600;
+                        margin: 2px 8px;
                     }}
                 """)
             else:

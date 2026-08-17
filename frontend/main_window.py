@@ -65,25 +65,82 @@ class MainWindow(QMainWindow):
 
     def _load_style(self):
         return f"""
-        QMainWindow, QWidget {{ background-color: {Color.BG_DARK}; color: {Color.TEXT_PRIMARY}; }}
-        QFrame#contentFrame {{ background-color: {Color.BG_MEDIUM}; }}
-        QStatusBar {{ background-color: {Color.BG_MEDIUM}; color: {Color.TEXT_PRIMARY}; font-size: 12px; }}
+        QMainWindow, QWidget {{ background-color: {Color.BG_MAIN}; color: {Color.TEXT_PRIMARY}; font-family: '{Typography.FAMILY}'; }}
+        QFrame#contentFrame {{ background-color: {Color.BG_MAIN}; }}
+        QStatusBar {{ background-color: {Color.BG_SIDEBAR}; color: {Color.TEXT_SECONDARY}; font-size: 12px; border-top: 1px solid {Color.BORDER}; }}
         QStatusBar::item {{ border: none; }}
-        QPushButton {{ background-color: {Color.PRIMARY}; color: white; border-radius: 5px; padding: 8px 16px; border: none; }}
+        
+        QPushButton {{ 
+            background-color: {Color.PRIMARY}; 
+            color: white; 
+            border-radius: 8px; 
+            padding: 10px 20px; 
+            border: none; 
+            font-weight: 600;
+        }}
         QPushButton:hover {{ background-color: {Color.PRIMARY_HOVER}; }}
         QPushButton:pressed {{ background-color: {Color.PRIMARY_DARK}; }}
+        
         QLabel {{ color: {Color.TEXT_PRIMARY}; }}
-        QLineEdit {{ background-color: {Color.BG_MEDIUM}; color: {Color.TEXT_PRIMARY}; padding: 6px; border-radius: 4px; border: 1px solid {Color.PRIMARY}; }}
-        QComboBox {{ background-color: {Color.BG_MEDIUM}; color: {Color.TEXT_PRIMARY}; padding: 6px; border-radius: 4px; border: 1px solid {Color.PRIMARY}; }}
+        
+        QLineEdit, QTextEdit {{ 
+            background-color: {Color.BG_SIDEBAR}; 
+            color: {Color.TEXT_PRIMARY}; 
+            padding: 10px; 
+            border-radius: 8px; 
+            border: 1px solid {Color.BORDER}; 
+        }}
+        QLineEdit:focus {{ border: 1px solid {Color.PRIMARY}; }}
+        
+        QComboBox {{ 
+            background-color: {Color.BG_SIDEBAR}; 
+            color: {Color.TEXT_PRIMARY}; 
+            padding: 8px; 
+            border-radius: 8px; 
+            border: 1px solid {Color.BORDER}; 
+        }}
         QComboBox::drop-down {{ border: none; }}
-        QComboBox QAbstractItemView {{ background-color: {Color.BG_MEDIUM}; color: {Color.TEXT_PRIMARY}; selection-background-color: {Color.PRIMARY}; }}
+        QComboBox QAbstractItemView {{ 
+            background-color: {Color.BG_SIDEBAR}; 
+            color: {Color.TEXT_PRIMARY}; 
+            selection-background-color: {Color.PRIMARY}; 
+            outline: none;
+        }}
+        
         QScrollArea {{ border: none; background: transparent; }}
-        QScrollBar:vertical {{ background: {Color.BG_MEDIUM}; width: 10px; border-radius: 5px; }}
-        QScrollBar::handle:vertical {{ background: {Color.PRIMARY}; border-radius: 5px; }}
-        QTableWidget {{ background-color: {Color.BG_MEDIUM}; color: {Color.TEXT_PRIMARY}; border-radius: 8px; border: 1px solid {Color.BG_MEDIUM}; }}
-        QHeaderView::section {{ background-color: {Color.BG_MEDIUM}; color: {Color.TEXT_PRIMARY}; padding: 8px; }}
-        #sidebar {{ background-color: {Color.BG_MEDIUM}; }}
-        #topToolbar {{ background-color: {Color.BG_MEDIUM}; border-bottom: 1px solid {Color.BG_MEDIUM}; }}
+        
+        QScrollBar:vertical {{ 
+            background: {Color.BG_MAIN}; 
+            width: 8px; 
+            margin: 0;
+        }}
+        QScrollBar::handle:vertical {{ 
+            background: {Color.BORDER}; 
+            border-radius: 4px; 
+            min-height: 20px;
+        }}
+        QScrollBar::handle:vertical:hover {{ background: {Color.TEXT_MUTED}; }}
+        
+        QTableWidget {{ 
+            background-color: {Color.BG_SIDEBAR}; 
+            color: {Color.TEXT_PRIMARY}; 
+            gridline-color: {Color.BORDER};
+            border-radius: 12px; 
+            border: 1px solid {Color.BORDER}; 
+        }}
+        QHeaderView::section {{ 
+            background-color: {Color.BG_SIDEBAR}; 
+            color: {Color.TEXT_WHITE}; 
+            padding: 12px; 
+            border: none;
+            border-bottom: 1px solid {Color.BORDER};
+            font-weight: bold;
+        }}
+        
+        #topToolbar {{ 
+            background-color: {Color.BG_MAIN}; 
+            border-bottom: 1px solid {Color.BORDER}; 
+        }}
         """
 
     def _setup_ui(self):

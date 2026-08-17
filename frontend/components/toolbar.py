@@ -19,7 +19,7 @@ class TopToolbar(QWidget):
         self.setFixedHeight(60)
         self.setStyleSheet(f"""
             #topToolbar {{
-                background-color: {Color.BG_MEDIUM};
+                background-color: {Color.BG_MAIN};
                 border-bottom: 1px solid {Color.BORDER};
             }}
         """)
@@ -78,13 +78,13 @@ class TopToolbar(QWidget):
         self.notif_btn.setCursor(Qt.PointingHandCursor)
         self.notif_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {Color.BG_LIGHT};
+                background-color: {Color.BG_SIDEBAR};
                 border: 1px solid {Color.BORDER};
-                border-radius: 6px;
+                border-radius: 8px;
                 font-size: 14px;
             }}
             QPushButton:hover {{
-                background-color: {Color.BORDER};
+                background-color: {Color.BG_HOVER};
             }}
         """)
         self.notif_btn.clicked.connect(self._show_notifications)

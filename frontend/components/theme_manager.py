@@ -15,11 +15,11 @@ class ThemeManager:
 
     THEMES = {
         "Dark Professional": {
-            "background": Color.BG_DARK,
-            "surface": Color.BG_MEDIUM,
+            "background": Color.BG_MAIN,
+            "surface": Color.BG_SIDEBAR,
             "primary": Color.PRIMARY,
             "secondary": Color.PRIMARY_HOVER,
-            "text": Color.TEXT_WHITE,
+            "text": Color.TEXT_PRIMARY,
             "text_secondary": Color.TEXT_SECONDARY,
             "success": Color.SUCCESS,
             "warning": Color.WARNING,

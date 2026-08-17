@@ -23,12 +23,12 @@ class StatCard(QFrame):
             QFrame#StatCard {{
                 background-color: {Color.BG_CARD};
                 border: 1px solid {Color.BORDER};
-                border-radius: 10px;
-                padding: 20px;
+                border-radius: 16px;
+                padding: 24px;
             }}
             QFrame#StatCard:hover {{
                 border: 1px solid {self._accent};
-                background-color: {Color.BG_LIGHT};
+                background-color: {Color.BG_HOVER};
             }}
         """)
         self.setMinimumSize(200, 140)
@@ -43,11 +43,11 @@ class StatCard(QFrame):
         layout.addWidget(icon_label)
 
         title_label = QLabel(title)
-        title_label.setStyleSheet(f"font-size: 11px; color: {Color.TEXT_SECONDARY}; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;")
+        title_label.setStyleSheet(f"font-size: 13px; color: {Color.TEXT_SECONDARY}; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;")
         layout.addWidget(title_label)
 
         self.value_label = QLabel(value)
-        self.value_label.setStyleSheet(f"font-size: 28px; font-weight: 700; color: {self._accent};")
+        self.value_label.setStyleSheet(f"font-size: 32px; font-weight: 800; color: {Color.TEXT_WHITE}; margin-top: 4px;")
         layout.addWidget(self.value_label)
 
         self.subtitle_label = QLabel(subtitle)
