@@ -4,6 +4,8 @@ Finovate Audit Nexus AI - Main Application Entry Point
 Enterprise AI Financial Audit & Intelligence Platform
 
 Developed By: Ahmed Mostafa Ibrahim
+Phone: 01225155329
+Email: gogom8870@gmail.com
 Brand: Finovate – AHMED EG
 © 2025 All Rights Reserved
 """
@@ -11,125 +13,123 @@ import sys
 import os
 import multiprocessing
 import logging
+import traceback
 from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # إعداد نظام تسجيل الأخطاء في ملف خارجي للتشخيص
-log_dir = os.path.join(os.path.expanduser("~"), ".finovate_audit")
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, "app_debug.log")
+def setup_logging():
+    try:
+        log_dir = os.path.join(os.path.expanduser("~"), ".finovate_audit")
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, "app_debug.log")
+        
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_file, encoding='utf-8'),
+                logging.StreamHandler()
+            ]
+        )
+        return logging.getLogger("Main")
+    except Exception as e:
+        print(f"Failed to setup logging: {e}")
+        return logging.getLogger("Fallback")
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file, encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger("Main")
+logger = setup_logging()
 
 def main():
     """النقطة الرئيسية لتشغيل التطبيق"""
     # ضروري جداً لعمل PyInstaller على ويندوز عند استخدام multiprocessing
     multiprocessing.freeze_support()
     
-    logger.info("Application Starting...")
-    print("=" * 60)
-    print("[START] Finovate Audit Nexus AI")
-    print("   Enterprise AI Financial Audit & Intelligence Platform")
-    print("=" * 60)
-    print()
-    print("[OK] System Status: Ready")
-    print()
-    print("Available Commands:")
-    print("  --api       Start FastAPI Backend Server")
-    print("  --desktop   Start PySide6 Desktop Application")
-    print("  --all       Start API server + Desktop (recommended)")
-    print("  --test      Run Test Suite")
-    print("  --help      Show this help message")
-    print("  --version   Show Version Information")
-    print()
-    
-    if len(sys.argv) > 1:
-        command = sys.argv[1]
+    try:
+        logger.info("Application Starting...")
+        # Fallback log in current directory for emergency
+        with open("startup_status.log", "a") as f:
+            f.write(f"[{datetime.now()}] Main entry point reached.\n")
+            
+        print("=" * 60)
+        print("[START] Finovate Audit Nexus AI")
+        print("   Enterprise AI Financial Audit & Intelligence Platform")
+        print("=" * 60)
         
-        if command in ("--api", "api"):
-            start_api_server()
-        elif command in ("--desktop", "desktop"):
-            start_desktop_app()
-        elif command in ("--all", "all"):
-            start_all()
-        elif command in ("--test", "test"):
-            run_tests()
-        elif command in ("--version", "version"):
-            show_version()
-        elif command in ("--help", "help", "-h"):
-            main()
+        if len(sys.argv) > 1:
+            command = sys.argv[1]
+            if command in ("--api", "api"):
+                start_api_server()
+            elif command in ("--desktop", "desktop"):
+                start_desktop_app()
+            elif command in ("--all", "all"):
+                start_all()
+            elif command in ("--test", "test"):
+                run_tests()
+            elif command in ("--version", "version"):
+                show_version()
+            elif command in ("--help", "help", "-h"):
+                show_help()
+            else:
+                print(f"[ERROR] Unknown command: {command}")
+                show_help()
+                sys.exit(1)
         else:
-            print(f"[ERROR] Unknown command: {command}")
-            print("Use --help to see available commands.")
-            sys.exit(1)
-    else:
-        # Default: Start everything (API + Desktop) for full functionality
-        start_all()
+            # Default: Start everything (API + Desktop)
+            start_all()
+            
+    except Exception as e:
+        error_msg = f"CRITICAL STARTUP ERROR: {str(e)}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        with open("startup_error.log", "w", encoding='utf-8') as f:
+            f.write(error_msg)
+        print(error_msg)
+        sys.exit(1)
 
 def start_all():
     """تشغيل الخادم وتطبيق سطح المكتب معاً"""
-    import multiprocessing
-    import time
     import threading
+    import time
 
     logger.info("Starting API server + Desktop...")
     
-    # في بيئة PyInstaller، يفضل تشغيل الـ API في خيط (Thread) منفصل أو عملية مستقلة بحذر
     def run_api():
         try:
-            # استيراد مباشر لضمان وجود الموديلات في النطاق
             import uvicorn
             import backend.main
             logger.info("Starting Uvicorn server...")
             uvicorn.run(backend.main.app, host="127.0.0.1", port=8000, log_level="info")
         except Exception as e:
             logger.error(f"API Server failed: {e}")
-            import traceback
             logger.error(traceback.format_exc())
 
     api_thread = threading.Thread(target=run_api, daemon=True)
     api_thread.start()
     
     logger.info("API server thread started on http://127.0.0.1:8000")
-    time.sleep(1)
+    time.sleep(2) # Wait for server to initialize
     start_desktop_app()
-
 
 def start_api_server():
     """تشغيل خادم API"""
-    print("[API] Starting FastAPI Backend Server...")
+    logger.info("Starting FastAPI Backend Server...")
     try:
         import uvicorn
-        uvicorn.run(
-            "backend.main:app",
-            host="0.0.0.0",
-            port=8000,
-            reload=True
-        )
-    except ImportError:
-        print("[ERROR] Please install requirements: pip install -r requirements.txt")
+        uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    except Exception as e:
+        logger.error(f"Failed to start API server: {e}")
         sys.exit(1)
 
 def start_desktop_app():
     """تشغيل تطبيق سطح المكتب"""
     logger.info("Starting PySide6 Desktop Application...")
     try:
-        # استيرادات صريحة لتجنب فشل PyInstaller
-        import PySide6.QtWidgets
+        from PySide6.QtWidgets import QApplication, QMessageBox
         import frontend.main_window
         import frontend.components.login_dialog
         
-        app = PySide6.QtWidgets.QApplication(sys.argv)
+        app = QApplication(sys.argv)
         app.setApplicationName("Finovate Audit Nexus AI")
         app.setQuitOnLastWindowClosed(False)
 
@@ -157,20 +157,21 @@ def start_desktop_app():
                     app.setQuitOnLastWindowClosed(True)
 
             window.logout_requested.connect(_on_logout)
-
             sys.exit(app.exec())
+            
         except Exception as e:
             error_msg = f"MainWindow creation failed: {str(e)}\n{traceback.format_exc()}"
             logger.error(error_msg)
             QMessageBox.critical(None, "Fatal Error", f"فشل تشغيل الواجهة الرئيسية:\n{str(e)}")
             sys.exit(1)
+            
     except ImportError as e:
         logger.error(f"Missing dependency: {e}")
+        print(f"Missing dependency: {e}")
         sys.exit(1)
     except Exception as e:
         logger.error(f"Failed to start desktop app: {e}")
-        if 'app' in locals():
-            QMessageBox.critical(None, "Startup Error", f"خطأ في بداية التشغيل:\n{str(e)}")
+        print(f"Failed to start desktop app: {e}")
         sys.exit(1)
 
 def run_tests():
@@ -186,18 +187,19 @@ def run_tests():
 def show_version():
     """عرض معلومات الإصدار"""
     print("Finovate Audit Nexus AI v2.0.0")
-    print()
-    print("Components:")
-    print("  • 15 Enterprise Connectors [OK]")
-    print("  • 22 AI Agents [OK]")
-    print("  • FastAPI Backend [OK]")
-    print("  • PySide6 Desktop UI [OK]")
-    print("  • Database Layer [OK]")
-    print("  • Security Module [OK]")
-    print()
     print("Developed By: Ahmed Mostafa Ibrahim")
     print("Brand: Finovate – AHMED EG")
     print("© 2025 All Rights Reserved")
+
+def show_help():
+    """عرض المساعدة"""
+    print("Available Commands:")
+    print("  --api       Start FastAPI Backend Server")
+    print("  --desktop   Start PySide6 Desktop Application")
+    print("  --all       Start API server + Desktop (recommended)")
+    print("  --test      Run Test Suite")
+    print("  --version   Show Version Information")
+    print("  --help      Show this help message")
 
 if __name__ == "__main__":
     main()
