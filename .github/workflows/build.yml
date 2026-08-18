@@ -2,61 +2,25 @@ name: Build Desktop Application
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    branches: [ Finovate-Audit-Nexus-AI ]
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-          - os: ubuntu-latest
-            artifact_name: FinovateAudit-Linux
-          - os: macos-latest
-            artifact_name: FinovateAudit-macOS
-          - os: windows-latest
-            artifact_name: FinovateAudit-Windows
-
+    name: Build Windows App
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
-          cache: 'pip'
-
-      - name: Install Dependencies (Linux/macOS)
-        if: matrix.os != 'windows-latest'
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
-
-      - name: Install Dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-windows.txt
-          pip install pyinstaller
-
+          python-version: '3.10'
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
       - name: Build Application
         run: python scripts/build_desktop.py
-
-      - name: List dist directory (Debug)
-        shell: bash
-        run: ls -R dist/
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
+          name: FinovateAudit-Windows
           path: dist/
-          if-no-files-found: error
