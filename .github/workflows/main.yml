@@ -2,7 +2,7 @@ name: Build Desktop Application
 
 on:
   push:
-    branches: [ Finovate-Audit-Nexus-AI ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
