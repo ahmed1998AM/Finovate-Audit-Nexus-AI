@@ -217,3 +217,4 @@ Finovate-Audit-Nexus-AI/
 **ملاحظة للمطور:** لضمان نجاح بناء نسخة ويندوز، يرجى التأكد من تحديث ملف `.github/workflows/build.yml` لاستخدام **Python 3.10** كما هو موضح في تعليمات Manus.
  
 Final Trigger
+Diagnostic Trigger
