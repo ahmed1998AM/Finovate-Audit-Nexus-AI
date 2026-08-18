@@ -19,12 +19,15 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# إعداد نظام تسجيل الأخطاء في ملف خارجي للتشخيص
+# إعداد نظام تسجيل الأخطاء في ملف خارجي ولحظي للتشخيص
 def setup_logging():
     try:
-        log_dir = os.path.join(os.path.expanduser("~"), ".finovate_audit")
-        os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, "app_debug.log")
+        # أولاً: محاولة الكتابة في المجلد الحالي (بجانب الـ EXE) لضمان الرؤية
+        log_file = os.path.join(os.getcwd(), "app_debug.log")
+        
+        # ثانياً: إعداد المجلد الاحتياطي في مجلد المستخدم
+        user_log_dir = os.path.join(os.path.expanduser("~"), ".finovate_audit")
+        os.makedirs(user_log_dir, exist_ok=True)
         
         logging.basicConfig(
             level=logging.INFO,
@@ -125,6 +128,8 @@ def start_desktop_app():
     """تشغيل تطبيق سطح المكتب"""
     logger.info("Starting PySide6 Desktop Application...")
     try:
+        # تأخير استيراد المكتبات الثقيلة لضمان وصولنا لهذه النقطة
+        print("[INFO] Loading GUI Components...")
         from PySide6.QtWidgets import QApplication, QMessageBox
         import frontend.main_window
         import frontend.components.login_dialog
@@ -132,6 +137,7 @@ def start_desktop_app():
         app = QApplication(sys.argv)
         app.setApplicationName("Finovate Audit Nexus AI")
         app.setQuitOnLastWindowClosed(False)
+        print("[OK] GUI Framework Loaded.")
 
         user_info = {"username": "admin", "role": "Admin", "source": "local"}
         try:
